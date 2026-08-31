@@ -90,11 +90,25 @@ export const createDiagnosisRequestSchema = z.object({
 });
 export type CreateDiagnosisRequest = z.infer<typeof createDiagnosisRequestSchema>;
 
+export const UPLOAD_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export type UploadContentType = (typeof UPLOAD_CONTENT_TYPES)[number];
+
+/** Taille maximale acceptée par `POST /uploads` (octets). */
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 export const uploadRequestSchema = z.object({
-  contentType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  contentType: z.enum(UPLOAD_CONTENT_TYPES),
   kind: z.enum(IMAGE_KINDS).default('problem'),
 });
 export type UploadRequest = z.infer<typeof uploadRequestSchema>;
+
+export const uploadResultSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.enum(IMAGE_KINDS),
+  bytes: z.number().int().nonnegative(),
+  contentType: z.enum(UPLOAD_CONTENT_TYPES),
+});
+export type UploadResult = z.infer<typeof uploadResultSchema>;
 
 /* ------------------------------ Réponses API ----------------------------- */
 

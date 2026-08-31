@@ -1,17 +1,13 @@
 import { useLocalSearchParams } from 'expo-router';
-import { Card, Screen, Text } from '@/components';
+import { Screen } from '@/components';
+import { CaptureFlow } from '@/features/capture/CaptureFlow';
 
 export default function CaptureScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const captureMode = mode === 'library' ? 'library' : 'camera';
   return (
-    <Screen>
-      <Card>
-        <Text variant="heading">Camera & upload — PHASE 3</Text>
-        <Text muted>
-          This screen will handle {mode === 'library' ? 'picking a photo' : 'taking a photo'},
-          preview, description and upload to storage. Not implemented yet.
-        </Text>
-      </Card>
+    <Screen scroll={captureMode === 'library'}>
+      <CaptureFlow mode={captureMode} />
     </Screen>
   );
 }

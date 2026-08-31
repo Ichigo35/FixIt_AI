@@ -69,10 +69,11 @@ Secrets : copier `.env.example` et renseigner `apps/api/.dev.vars` (jamais commi
 
 ## État du projet
 
-**PHASE 2 — FOUNDATION terminée.** Monorepo pnpm en place : `packages/shared` (logique de
-sécurité + score déterministes, 18 tests), `apps/api` (Worker Hono, `/health`), `apps/mobile`
-(Expo Router, thème, composants, écran d'accueil). Projet Neon `fixit-ai` créé.
-Prochaine étape : **PHASE 3 — CAMERA**. Voir `TODO.md`.
+**PHASE 3 — CAMERA terminée.** `packages/shared` (sécurité + score déterministes),
+`apps/api` (Worker Hono : `/health`, `POST/GET/DELETE /uploads` → R2), `apps/mobile`
+(Expo Router, thème, écran d'accueil, prise de photo `expo-camera`, sélection galerie,
+preview, upload). 25 tests verts. Projet Neon `fixit-ai` créé.
+Prochaine étape : **PHASE 4 — DIAGNOSIS** (pipeline Gemini). Voir `TODO.md`.
 
 ## Documents
 

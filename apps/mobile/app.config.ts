@@ -37,6 +37,18 @@ const config: ExpoConfig = {
         dark: { backgroundColor: '#0B1120' },
       },
     ],
+    [
+      'expo-camera',
+      {
+        cameraPermission: 'FixIt AI uses the camera so you can photograph the problem you want to fix.',
+      },
+    ],
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'FixIt AI needs access to your photos so you can pick a picture of the problem.',
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

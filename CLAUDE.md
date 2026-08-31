@@ -25,15 +25,17 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 | Phase | État |
 |-------|------|
 | 1 — Audit | ✅ terminée · push OK (2026-08-31) |
-| 2 — Foundation | ✅ terminée · monorepo pnpm, shared+api+mobile, 20 tests verts, push OK |
-| 3 — Camera | ⏳ prochaine |
-| 4–10 | ⏳ voir `TODO.md` |
+| 2 — Foundation | ✅ monorepo pnpm, shared+api+mobile, push OK |
+| 3 — Camera | ✅ expo-camera + image-picker + `POST /uploads` → R2, 25 tests verts, push OK |
+| 4 — Diagnosis | ⏳ prochaine (pipeline Gemini + `POST /diagnoses` + écran résultat + STOP) |
+| 5–10 | ⏳ voir `TODO.md` |
 
 ## Infra provisionnée
 
 - **Neon** : projet `fixit-ai` = `winter-union-90877282` (org `org-sweet-tooth-50877405`, aws-us-east-2, PG 17). `DATABASE_URL` dans `apps/api/.dev.vars`. Aucune table encore (migrations en PHASE 6).
 - **Gemini** : clé dans `apps/api/.dev.vars` (`GEMINI_API_KEY`), modèle `gemini-2.5-flash`.
-- **Cloudflare** : pas encore de login `wrangler` ni bucket R2 (PHASE 3/6).
+- **Cloudflare / R2** : binding `IMAGES` (bucket `fixit-ai-images`) déclaré dans `wrangler.toml`. `wrangler dev` simule R2 en local (OK). Avant déploiement : `wrangler login` puis `wrangler r2 bucket create fixit-ai-images`.
+- **Domaine / DNS / hébergement : Cloudflare uniquement — jamais Vercel.**
 
 ## Commandes
 

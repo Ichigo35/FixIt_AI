@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from './env';
+import { uploads } from './routes/uploads';
 
 export function createApp() {
   const app = new Hono<{ Bindings: Env }>();
@@ -17,9 +18,12 @@ export function createApp() {
       services: {
         gemini: Boolean(c.env.GEMINI_API_KEY),
         database: Boolean(c.env.DATABASE_URL),
+        storage: Boolean(c.env.IMAGES),
       },
     }),
   );
+
+  app.route('/uploads', uploads);
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
   app.onError((err, c) => {

@@ -30,13 +30,21 @@ Légende : ✅ fait · 🚧 en cours · ⏳ à faire · ⏸️ reporté V2/V3
 
 ---
 
-## PHASE 3 — CAMERA ⏳
+## PHASE 3 — CAMERA ✅
 
-- ⏳ `expo-camera` + permissions, prise de photo, preview
-- ⏳ `expo-image-picker` (upload depuis galerie)
-- ⏳ Champ description « What happened? »
-- ⏳ Upload pré-signé vers R2 (`POST /uploads`)
-- ⏳ Bouton vidéo présent mais marqué « Coming soon »
+- ✅ `expo-camera` + `useCameraPermissions` (écran de demande d'accès), prise de photo, bouton obturateur
+- ✅ `expo-image-picker` (sélection galerie, lancement auto si `mode=library`)
+- ✅ Preview `expo-image` + « Retake / Choose another »
+- ✅ Champ description « What happened? »
+- ✅ `POST /uploads` : upload relayé par le Worker vers **R2** (binding `IMAGES`), validation type/taille (JPEG/PNG/WebP, 10 Mo), `GET` + `DELETE /uploads/:id`
+- ✅ `src/api/client.ts` (fetch typé + `ApiError`) et `src/api/uploads.ts`
+- ✅ Bouton vidéo = **SOON** (déjà en place PHASE 2)
+- ✅ 5 tests API (mock R2 en mémoire) ; vérifié end-to-end via `wrangler dev` + R2 local (`curl` upload/get/415)
+
+**Écart vs plan initial :** upload **relayé par le Worker** (mobile → Worker → R2) plutôt qu'URL
+pré-signée. Plus simple, marche en local sans compte Cloudflare, secrets hors du mobile.
+Les URLs pré-signées restent possibles plus tard (optim).
+**Reste :** `wrangler r2 bucket create fixit-ai-images` avant déploiement (après `wrangler login`).
 
 ---
 

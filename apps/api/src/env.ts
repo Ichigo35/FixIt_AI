@@ -10,6 +10,6 @@ export interface Env {
   DATABASE_URL?: string;
   AUTH_JWT_SECRET?: string;
 
-  // bindings (ajoutés en PHASE 6)
-  // IMAGES: R2Bucket;
+  // bindings
+  IMAGES?: R2Bucket;
 }

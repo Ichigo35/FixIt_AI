@@ -1,0 +1,24 @@
+name = "fixit-ai-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-09"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[dev]
+port = 8788
+
+# Variables publiques (non secrètes). Les secrets -> `wrangler secret put` ou .dev.vars
+[vars]
+APP_ENV = "development"
+FREE_MONTHLY_DIAGNOSES = "3"
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# Bucket R2 pour les images (créé en PHASE 3/6)
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "fixit-ai-images"
+
+# Secrets attendus (déclarés ici pour mémoire, valeurs jamais committées) :
+#   GEMINI_API_KEY
+#   DATABASE_URL
+#   AUTH_JWT_SECRET

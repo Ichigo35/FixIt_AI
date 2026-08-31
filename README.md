@@ -53,18 +53,26 @@ packages/
   shared/     Types, schémas Zod, SafetyClassifier, RepairabilityScore (déterministes)
 ```
 
-## Démarrage (après PHASE 2)
+## Démarrage
 
 ```bash
 pnpm install
-pnpm --filter api dev          # Worker local (wrangler dev)
-pnpm --filter mobile start     # Expo
+pnpm api            # Worker local (wrangler dev) -> http://localhost:8788
+pnpm mobile         # Expo (Metro)
+pnpm -r test        # tests (shared + api)
+pnpm -r typecheck   # TypeScript
+pnpm lint           # ESLint
 ```
+
+Secrets : copier `.env.example` et renseigner `apps/api/.dev.vars` (jamais committé) —
+`GEMINI_API_KEY`, `DATABASE_URL` (Neon).
 
 ## État du projet
 
-**PHASE 1 — AUDIT terminée.** Aucune application n'est encore implémentée.
-Voir `TODO.md` pour l'avancement et `ARCHITECTURE.md` pour le détail technique.
+**PHASE 2 — FOUNDATION terminée.** Monorepo pnpm en place : `packages/shared` (logique de
+sécurité + score déterministes, 18 tests), `apps/api` (Worker Hono, `/health`), `apps/mobile`
+(Expo Router, thème, composants, écran d'accueil). Projet Neon `fixit-ai` créé.
+Prochaine étape : **PHASE 3 — CAMERA**. Voir `TODO.md`.
 
 ## Documents
 

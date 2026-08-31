@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["@cloudflare/workers-types", "vitest/globals"],
+    "noEmit": true,
+    "paths": {
+      "@fixit/shared": ["../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": ["src", "test", "worker-configuration.d.ts"]
+}

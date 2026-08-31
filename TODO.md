@@ -9,21 +9,24 @@ Légende : ✅ fait · 🚧 en cours · ⏳ à faire · ⏸️ reporté V2/V3
 - ✅ Inspection environnement (Node 26, pnpm 11, bun 1.3, Expo 57, Git, Xcode 26.6, Android SDK, gh, wrangler)
 - ✅ Vérification accès SSH GitHub (`Ichigo35`), dépôt distant `Ichigo35/FixIt_AI` (privé, vide)
 - ✅ `README.md`, `ARCHITECTURE.md`, `TODO.md`, `.env.example`
-- 🚧 **Validation de l'architecture par l'utilisateur** ← ON EST ICI
-- ⏳ `git init` + premier commit + push (après validation)
+- ✅ Validation de l'architecture par l'utilisateur (auth = Neon Auth en PHASE 6 ; clé Gemini fournie)
+- ✅ `git init` + commit + push
 
 ---
 
-## PHASE 2 — FOUNDATION ⏳
+## PHASE 2 — FOUNDATION ✅
 
-- ⏳ Monorepo pnpm (`apps/mobile`, `apps/api`, `packages/shared`)
-- ⏳ `apps/mobile` : Expo + TS + Expo Router, navigation, thème (clair/sombre), tokens
-- ⏳ Composants de base (Button, Card, Badge risque/difficulté, Screen, etc.)
-- ⏳ `apps/api` : Worker Hono + wrangler, route `GET /health`
-- ⏳ `packages/shared` : types, schémas Zod, constantes, squelettes `SafetyClassifier` / `RepairabilityScore`
-- ⏳ ESLint + Prettier + tsconfig partagés, Vitest
-- ⏳ Écran d'accueil : titre, sous-titre, 4 actions (Take photo / Record video [bientôt] / Describe / Upload)
-- ⏳ Vérifier `expo start` et `wrangler dev`
+- ✅ Monorepo pnpm (`apps/mobile`, `apps/api`, `packages/shared`) + `.npmrc` hoisted + tsconfig base
+- ✅ `packages/shared` : constantes de domaine, schémas **Zod**, `classifySafety` (déterministe), `computeRepairabilityScore` — **18 tests** (dont câble électrique/gaz/lithium → STOP)
+- ✅ `apps/api` : Worker **Hono** + wrangler (`GET /`, `GET /health`), CORS, 404/500 JSON — 2 tests, `wrangler dev` OK sur `:8788` (gemini+db détectés via `.dev.vars`)
+- ✅ Projet **Neon** créé : `fixit-ai` / `winter-union-90877282` (org sweet-tooth, région aws-us-east-2, PG 17)
+- ✅ `apps/mobile` : Expo SDK 57 + **Expo Router** (typed routes), `metro.config.js` monorepo, `app.config.ts`
+- ✅ Thème clair/sombre (`tokens.ts` + `ThemeProvider`), composants : `Text`, `Screen`, `Card`, `Button`, `RiskBadge` / `DifficultyBadge` / `RecommendationBadge`
+- ✅ Écran d'accueil : titre, sous-titre, 4 actions (Take photo / Upload photo / Describe / Record video → **SOON**) + écrans stub `capture` / `describe`
+- ✅ ESLint 9 (flat) + Prettier + Vitest — `pnpm lint` / `pnpm -r test` / `pnpm -r typecheck` verts
+- ✅ Bundle Expo iOS OK (`expo export`, 1128 modules, `@fixit/shared` résolu par Metro)
+
+**Écarts / notes :** port dev API = **8788** (8787 occupé par un autre projet local). Auth, R2, pipeline IA, DB migrations = phases suivantes.
 
 ---
 

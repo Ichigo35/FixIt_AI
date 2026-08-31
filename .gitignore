@@ -1,0 +1,35 @@
+# Secrets — jamais committés
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.local
+
+# Dépendances
+node_modules/
+.pnpm-store/
+
+# Builds / caches
+dist/
+build/
+.expo/
+.expo-shared/
+web-build/
+.wrangler/
+.turbo/
+*.tsbuildinfo
+coverage/
+
+# OS / éditeurs
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Natif
+ios/Pods/
+android/.gradle/
+*.keystore
+!debug.keystore

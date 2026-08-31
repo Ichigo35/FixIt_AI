@@ -24,7 +24,7 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 
 | Phase | État |
 |-------|------|
-| 1 — Audit | ✅ terminée · commit `78f79e2` (push en attente, voir ci-dessous) |
+| 1 — Audit | ✅ terminée · commit `5c556a4` · push OK (2026-08-31) |
 | 2 — Foundation | ⏳ prochaine (en attente feu vert utilisateur) |
 | 3–10 | ⏳ voir `TODO.md` |
 
@@ -33,7 +33,7 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 Node 26.5 · pnpm 11.13 · bun 1.3.14 · Expo 57 · Git 2.50 · Xcode 26.6 · Android SDK présent (ANDROID_HOME non défini) · CocoaPods 1.17 · gh 2.97 · wrangler 4.127 (via npx) · watchman absent · EAS absent.
 GitHub : compte `Ichigo35`, SSH OK. Dépôt `Ichigo35/FixIt_AI` (privé, vide au départ).
 ⚠️ Disque à 95 % (~12 Gio libres) — surveiller avec les builds RN/iOS.
-⚠️ Résolution DNS locale défaillante (le routeur 192.168.18.1 ne résout pas github.com alors qu'Internet fonctionne) → `git push` bloqué le 2026-08-31. À réessayer quand le DNS est réparé.
+ℹ️ Résolution DNS locale intermittente le 2026-08-31 (routeur 192.168.18.1). Si `git push` échoue sur « Could not resolve hostname github.com » → réessayer.
 
 ## Rituel de fin de phase
 

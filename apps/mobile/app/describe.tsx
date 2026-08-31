@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { Button, Card, Screen, Text } from '@/components';
@@ -5,6 +6,7 @@ import { useTheme } from '@/theme';
 
 export default function DescribeScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const [text, setText] = useState('');
 
   return (
@@ -32,9 +34,16 @@ export default function DescribeScreen() {
       </Card>
 
       <View style={{ gap: theme.spacing.sm }}>
-        <Button label="Analyze" icon="🔍" disabled={text.trim().length < 8} />
+        <Button
+          label="Analyze"
+          icon="🔍"
+          disabled={text.trim().length < 8}
+          onPress={() =>
+            router.push({ pathname: '/diagnosis/new', params: { description: text.trim() } })
+          }
+        />
         <Text variant="caption" muted center>
-          Diagnosis pipeline arrives in PHASE 4.
+          A photo usually gives a much better diagnosis.
         </Text>
       </View>
     </Screen>

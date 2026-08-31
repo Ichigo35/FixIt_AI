@@ -48,16 +48,20 @@ Les URLs pré-signées restent possibles plus tard (optim).
 
 ---
 
-## PHASE 4 — DIAGNOSIS ⏳
+## PHASE 4 — DIAGNOSIS ✅
 
-- ⏳ `AIProvider` + `GeminiProvider` (vision + `responseSchema`)
-- ⏳ `POST /diagnoses` : pipeline complet
-- ⏳ Validation Zod + retry/réparation JSON
-- ⏳ `SafetyClassifier` déterministe (LOW/MEDIUM/HIGH/CRITICAL, forcedStop)
-- ⏳ `computeRepairabilityScore`
-- ⏳ Écran résultat : problème, confiance, causes, sévérité, difficulté, temps, coût, recommandation 🟢🟡🔴
-- ⏳ Écran « STOP — Contact a professional » si `forcedStop`
-- ⏳ Tests des 5 scénarios (câble électrique → STOP)
+- ✅ Abstraction `AIProvider` (`src/providers/`) + `GeminiProvider` (vision, `responseSchema` structuré, `x-goog-api-key`) + `MockProvider` déterministe (secours si pas de clé)
+- ✅ `POST /diagnoses` : validation Zod → récupération images R2 → IA → `coerceRawDiagnosis` → `assessDiagnosis` (sécurité + score) → persistance R2 (bridge avant Neon) → réponse
+- ✅ `GET` / `DELETE /diagnoses/:id`
+- ✅ Retry/réparation JSON (1 relance en renvoyant l'erreur au modèle)
+- ✅ `classifySafety` **repensé** : `forcedStop` réservé aux dangers réellement décrits (câble secteur, fil dénudé, gaz, HT, lithium gonflée, feu, structure) ou sévérité IA `CRITICAL` ; les tokens de danger seuls (`mains_electricity`…) élèvent le risque sans bloquer
+- ✅ `packages/shared/pipeline.ts` : `assessDiagnosis()` (pur, testé)
+- ✅ Mobile : `src/api/diagnoses.ts`, écran `diagnosis/new` (loader « Analyzing… » → résultat), `DiagnosisResultView` (problème, confiance %, badges risque/difficulté/reco 🟢🟡🔴, `RepairabilityMeter` /100, temps, coût ou « unavailable », causes numérotées, « more info needed »), `StopView` (écran rouge « 🔴 STOP — Contact a professional », pas de guide)
+- ✅ « Analyze » câblé depuis `capture` (upload → diagnostic) et `describe` (texte → diagnostic)
+- ✅ Stub `repair/[id]` (PHASE 5)
+- ✅ **37 tests** (24 shared + 13 api). Les 5 scénarios de référence vérifiés contre **Gemini réel** (`gemini-3.6-flash`) : robinet→DIY 52, chaise→CAUTION, PC→PROFESSIONAL (diag visible), lave-linge→PROFESSIONAL, **câble électrique→CRITICAL + STOP, score 1**
+
+**Notes :** modèle passé à `gemini-3.6-flash` (`gemini-2.5-flash` retiré côté Google). Latence ~10–18 s/diagnostic. Erreurs Gemini → 502 + écran « Try again ». Persistance en R2 JSON en attendant Neon (PHASE 6).
 
 ---
 

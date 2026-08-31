@@ -7,12 +7,16 @@ function raw(overrides: Partial<RawDiagnosis> = {}): RawDiagnosis {
     problem: 'Something is wrong',
     confidence: 0.7,
     severity: 'LOW',
+    difficulty: 'EASY',
     possibleCauses: ['wear and tear'],
     recommendedAction: 'inspect the part',
     needsProfessional: false,
     hazards: [],
     tools: [],
     parts: [],
+    partsAvailability: 'unknown',
+    riskOfWorseningDamage: 'low',
+    estimatedStepCount: 4,
     moreInfoNeeded: [],
     ...overrides,
   };
@@ -88,6 +92,32 @@ describe('classifySafety', () => {
       description: 'small scratch',
       diagnosis: raw({ needsProfessional: true, severity: 'LOW' }),
     });
+    expect(r.recommendation).toBe('PROFESSIONAL');
+  });
+
+  it('appareil sur secteur sans danger décrit -> PROFESSIONAL mais PAS d\'arrêt forcé', () => {
+    const r = classifySafety({
+      category: 'appliance',
+      description: 'my microwave stopped heating food but the turntable still spins',
+      diagnosis: raw({
+        problem: 'Likely failed magnetron or high-voltage diode',
+        severity: 'HIGH',
+        needsProfessional: true,
+        hazards: ['mains_electricity', 'high_voltage'],
+      }),
+    });
+    expect(r.forcedStop).toBe(false);
+    expect(r.recommendation).toBe('PROFESSIONAL');
+    expect(r.riskLevel).toBe('HIGH');
+  });
+
+  it('sévérité CRITICAL affirmée par l\'IA -> arrêt forcé', () => {
+    const r = classifySafety({
+      category: 'electronics',
+      description: 'photo of the charger',
+      diagnosis: raw({ severity: 'CRITICAL', hazards: ['lithium_battery'] }),
+    });
+    expect(r.forcedStop).toBe(true);
     expect(r.recommendation).toBe('PROFESSIONAL');
   });
 

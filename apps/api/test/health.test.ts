@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 
-const env = { APP_ENV: 'test', FREE_MONTHLY_DIAGNOSES: '3', GEMINI_MODEL: 'gemini-2.5-flash' };
+const env = { APP_ENV: 'test', FREE_MONTHLY_DIAGNOSES: '3', GEMINI_MODEL: 'gemini-3.6-flash' };
 
 describe('API', () => {
   it('GET /health renvoie ok', async () => {

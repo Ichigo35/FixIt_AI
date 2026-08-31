@@ -11,7 +11,7 @@ port = 8788
 [vars]
 APP_ENV = "development"
 FREE_MONTHLY_DIAGNOSES = "3"
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 
 # Bucket R2 pour les images.
 # `wrangler dev` simule R2 en local (aucun compte requis).

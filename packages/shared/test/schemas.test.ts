@@ -5,6 +5,7 @@ const valid = {
   problem: 'Blocked drain pump filter',
   confidence: 0.82,
   severity: 'LOW',
+  difficulty: 'EASY',
   possibleCauses: ['Foreign object in filter', 'Blocked drain hose'],
   recommendedAction: 'Clean the drain filter',
   needsProfessional: false,
@@ -27,10 +28,11 @@ describe('rawDiagnosisSchema', () => {
     expect(() => rawDiagnosisSchema.parse({ ...valid, severity: 'SEVERE' })).toThrow();
   });
 
-  it('coerceRawDiagnosis normalise confidence en % et severity en minuscules', () => {
-    const r = coerceRawDiagnosis({ ...valid, confidence: 82, severity: 'low' });
+  it('coerceRawDiagnosis normalise confidence en %, severity et difficulty en majuscules', () => {
+    const r = coerceRawDiagnosis({ ...valid, confidence: 82, severity: 'low', difficulty: 'easy' });
     expect(r.confidence).toBeCloseTo(0.82);
     expect(r.severity).toBe('LOW');
+    expect(r.difficulty).toBe('EASY');
   });
 
   it('coerceRawDiagnosis applique les valeurs par défaut', () => {
@@ -38,6 +40,7 @@ describe('rawDiagnosisSchema', () => {
       problem: 'x y z',
       confidence: 0.5,
       severity: 'MEDIUM',
+      difficulty: 'INTERMEDIATE',
       possibleCauses: ['a'],
       recommendedAction: 'do a',
       needsProfessional: false,
@@ -45,5 +48,7 @@ describe('rawDiagnosisSchema', () => {
     expect(r.hazards).toEqual([]);
     expect(r.tools).toEqual([]);
     expect(r.moreInfoNeeded).toEqual([]);
+    expect(r.partsAvailability).toBe('unknown');
+    expect(r.estimatedStepCount).toBe(4);
   });
 });

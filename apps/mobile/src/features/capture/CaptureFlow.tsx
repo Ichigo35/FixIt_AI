@@ -1,16 +1,16 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { ApiError } from '@/api/client';
 import { uploadImage } from '@/api/uploads';
 import { Button, Card, Text } from '@/components';
 import { useTheme } from '@/theme';
-import type { UploadResult } from '@fixit/shared';
 import { CameraCapture } from './CameraCapture';
 
 type Mode = 'camera' | 'library';
-type Status = 'idle' | 'uploading' | 'done' | 'error';
+type Status = 'idle' | 'uploading' | 'error';
 
 async function pickFromLibrary(): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -23,11 +23,11 @@ async function pickFromLibrary(): Promise<string | null> {
 
 export function CaptureFlow({ mode }: { mode: Mode }) {
   const theme = useTheme();
+  const router = useRouter();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [uploaded, setUploaded] = useState<UploadResult | null>(null);
 
   const openLibrary = useCallback(async () => {
     const uri = await pickFromLibrary();
@@ -43,9 +43,11 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
     setStatus('uploading');
     setError(null);
     try {
-      const result = await uploadImage(photoUri, 'problem');
-      setUploaded(result);
-      setStatus('done');
+      const upload = await uploadImage(photoUri, 'problem');
+      router.replace({
+        pathname: '/diagnosis/new',
+        params: { imageIds: JSON.stringify([upload.id]), description: description.trim() },
+      });
     } catch (err) {
       setStatus('error');
       setError(
@@ -90,7 +92,7 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
           onPress={() => {
             setPhotoUri(null);
             setStatus('idle');
-            setUploaded(null);
+            setError(null);
           }}
         />
       </View>
@@ -114,24 +116,7 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
         </Card>
       </View>
 
-      {status === 'done' && uploaded ? (
-        <Card>
-          <Text variant="heading" color={theme.colors.success}>
-            Photo uploaded ✓
-          </Text>
-          <Text muted>
-            Image id {uploaded.id.slice(0, 8)}… ({Math.round(uploaded.bytes / 1024)} KB). The AI
-            diagnosis pipeline is wired up in PHASE 4.
-          </Text>
-        </Card>
-      ) : (
-        <Button
-          label="Analyze"
-          icon="🔍"
-          loading={status === 'uploading'}
-          onPress={analyze}
-        />
-      )}
+      <Button label="Analyze" icon="🔍" loading={status === 'uploading'} onPress={analyze} />
 
       {error ? (
         <Text variant="caption" color={theme.colors.danger} center>

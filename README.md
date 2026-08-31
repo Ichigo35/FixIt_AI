@@ -69,11 +69,12 @@ Secrets : copier `.env.example` et renseigner `apps/api/.dev.vars` (jamais commi
 
 ## État du projet
 
-**PHASE 3 — CAMERA terminée.** `packages/shared` (sécurité + score déterministes),
-`apps/api` (Worker Hono : `/health`, `POST/GET/DELETE /uploads` → R2), `apps/mobile`
-(Expo Router, thème, écran d'accueil, prise de photo `expo-camera`, sélection galerie,
-preview, upload). 25 tests verts. Projet Neon `fixit-ai` créé.
-Prochaine étape : **PHASE 4 — DIAGNOSIS** (pipeline Gemini). Voir `TODO.md`.
+**PHASE 4 — DIAGNOSIS terminée.** Pipeline complet opérationnel : photo/texte → upload R2 →
+`POST /diagnoses` → **Gemini** (`gemini-3.6-flash`, JSON structuré) → validation Zod →
+`classifySafety` (déterministe) → `computeRepairabilityScore` → écran résultat, ou écran
+**STOP** si danger réel. Abstraction `AIProvider` (Gemini + Mock). 37 tests verts, les 5
+scénarios de référence vérifiés contre Gemini réel.
+Prochaine étape : **PHASE 5 — REPAIR GUIDE**. Voir `TODO.md`.
 
 ## Documents
 

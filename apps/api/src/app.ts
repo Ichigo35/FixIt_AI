@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from './env';
+import { diagnoses } from './routes/diagnoses';
 import { uploads } from './routes/uploads';
 
 export function createApp() {
@@ -24,6 +25,7 @@ export function createApp() {
   );
 
   app.route('/uploads', uploads);
+  app.route('/diagnoses', diagnoses);
 
   app.notFound((c) => c.json({ error: 'not_found' }, 404));
   app.onError((err, c) => {

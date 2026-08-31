@@ -37,11 +37,15 @@ export const identifiedModelSchema = z.object({
 });
 export type IdentifiedModel = z.infer<typeof identifiedModelSchema>;
 
+export const PARTS_AVAILABILITY = ['common', 'uncommon', 'unknown'] as const;
+export const WORSENING_RISK = ['low', 'medium', 'high'] as const;
+
 /** Ce que le modèle IA doit renvoyer (JSON contraint). */
 export const rawDiagnosisSchema = z.object({
   problem: z.string().min(3),
   confidence: z.number().min(0).max(1),
   severity: z.enum(RISK_LEVELS),
+  difficulty: z.enum(DIFFICULTIES),
   possibleCauses: z.array(z.string().min(1)).min(1).max(6),
   recommendedAction: z.string().min(1),
   needsProfessional: z.boolean(),
@@ -49,13 +53,32 @@ export const rawDiagnosisSchema = z.object({
   hazards: z.array(z.string()).default([]),
   identifiedModel: identifiedModelSchema.nullable().optional(),
   estimatedTimeMinutes: z.number().int().positive().nullable().optional(),
+  estimatedStepCount: z.number().int().min(1).max(30).default(4),
   estimatedCost: moneyRangeSchema.nullable().optional(),
   tools: z.array(z.string().min(1)).default([]),
   parts: z.array(partSchema).default([]),
+  partsAvailability: z.enum(PARTS_AVAILABILITY).default('unknown'),
+  riskOfWorseningDamage: z.enum(WORSENING_RISK).default('medium'),
   /** Questions à poser si l'image/description ne suffit pas. */
   moreInfoNeeded: z.array(z.string().min(1)).default([]),
 });
 export type RawDiagnosis = z.infer<typeof rawDiagnosisSchema>;
+
+/** Compétence requise déduite de la difficulté. */
+export function skillForDifficulty(
+  difficulty: RawDiagnosis['difficulty'],
+): 'basic' | 'intermediate' | 'advanced' | 'pro' {
+  switch (difficulty) {
+    case 'EASY':
+      return 'basic';
+    case 'INTERMEDIATE':
+      return 'intermediate';
+    case 'ADVANCED':
+      return 'advanced';
+    default:
+      return 'pro';
+  }
+}
 
 export const repairStepSchema = z.object({
   index: z.number().int().nonnegative(),
@@ -150,6 +173,9 @@ export function coerceRawDiagnosis(input: unknown): RawDiagnosis {
   }
   if (typeof obj.severity === 'string') {
     obj.severity = obj.severity.toUpperCase();
+  }
+  if (typeof obj.difficulty === 'string') {
+    obj.difficulty = obj.difficulty.toUpperCase();
   }
   return rawDiagnosisSchema.parse(obj);
 }

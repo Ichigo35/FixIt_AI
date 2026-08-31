@@ -19,6 +19,8 @@ function RootStack() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="describe" options={{ title: 'Describe the problem' }} />
         <Stack.Screen name="capture" options={{ title: 'Photo' }} />
+        <Stack.Screen name="diagnosis/new" options={{ title: 'Diagnosis', headerBackVisible: false }} />
+        <Stack.Screen name="repair/[id]" options={{ title: 'Repair guide' }} />
       </Stack>
     </>
   );

@@ -1,4 +1,4 @@
-import type { Category, RawDiagnosis } from '@fixit/shared';
+import type { Category, RawDiagnosis, RepairGuide } from '@fixit/shared';
 
 export interface DiagnoseImage {
   contentType: string;
@@ -14,10 +14,19 @@ export interface DiagnoseInput {
   images: DiagnoseImage[];
 }
 
+export interface RepairGuideInput {
+  diagnosis: RawDiagnosis;
+  category?: Category | null;
+  description?: string;
+  brand?: string | null;
+  model?: string | null;
+}
+
 export interface AIProvider {
   readonly name: string;
   readonly model: string;
   diagnose(input: DiagnoseInput): Promise<RawDiagnosis>;
+  generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide>;
 }
 
 export class AIProviderError extends Error {

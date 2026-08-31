@@ -1,0 +1,144 @@
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { View } from 'react-native';
+import type { Part, RepairGuide } from '@fixit/shared';
+import { Button, Card, DifficultyBadge, Screen, Text } from '@/components';
+import { useTheme } from '@/theme';
+
+function priceLabel(p: Part): string {
+  if (!p.priceKnown || p.priceMin == null) return 'Price unavailable';
+  const c = !p.currency || p.currency === 'USD' ? '$' : `${p.currency} `;
+  return p.priceMax && p.priceMax !== p.priceMin
+    ? `${c}${p.priceMin}–${p.priceMax}`
+    : `${c}${p.priceMin}`;
+}
+
+function List({ title, items }: { title: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <Card>
+      <Text variant="caption" muted>
+        {title}
+      </Text>
+      {items.map((it) => (
+        <Text key={it}>☑ {it}</Text>
+      ))}
+    </Card>
+  );
+}
+
+export function RepairGuideView({ guide }: { guide: RepairGuide }) {
+  const theme = useTheme();
+  const router = useRouter();
+  // -1 = overview, 0..n-1 = steps, n = done
+  const [pos, setPos] = useState(-1);
+
+  if (pos === -1) {
+    return (
+      <Screen scroll>
+        <View style={{ gap: theme.spacing.sm }}>
+          <Text variant="title">Repair guide</Text>
+          <Text muted>{guide.summary}</Text>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xs }}>
+            <DifficultyBadge level={guide.difficulty} />
+          </View>
+          {guide.estimatedTimeMinutes ? (
+            <Text variant="caption" muted>
+              Estimated time ~{guide.estimatedTimeMinutes} min · {guide.steps.length} steps
+            </Text>
+          ) : (
+            <Text variant="caption" muted>
+              {guide.steps.length} steps
+            </Text>
+          )}
+        </View>
+
+        {guide.generalWarnings.length > 0 ? (
+          <Card style={{ backgroundColor: theme.colors.cautionBg, borderColor: theme.colors.caution }}>
+            <Text variant="caption" color={theme.colors.caution}>
+              ⚠ BEFORE YOU START
+            </Text>
+            {guide.generalWarnings.map((w) => (
+              <Text key={w}>• {w}</Text>
+            ))}
+          </Card>
+        ) : null}
+
+        <List title="TOOLS" items={guide.tools} />
+        {guide.parts.length > 0 ? (
+          <Card>
+            <Text variant="caption" muted>
+              PARTS
+            </Text>
+            {guide.parts.map((p) => (
+              <View
+                key={p.name}
+                style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md }}
+              >
+                <Text style={{ flex: 1 }}>☑ {p.name}</Text>
+                <Text muted>{priceLabel(p)}</Text>
+              </View>
+            ))}
+          </Card>
+        ) : null}
+        <List title="OPTIONAL" items={guide.optional} />
+
+        <Button label="Start repair" icon="🛠️" onPress={() => setPos(0)} />
+        <Button label="Back" variant="ghost" onPress={() => router.back()} />
+      </Screen>
+    );
+  }
+
+  if (pos >= guide.steps.length) {
+    return (
+      <Screen>
+        <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.lg }}>
+          <Text variant="display">Done 🎉</Text>
+          <Text muted>
+            You&apos;ve reached the end of the guide. If the problem is fixed, great — otherwise it may
+            be time to call a professional.
+          </Text>
+          <Button label="Back to home" onPress={() => router.replace('/')} />
+        </View>
+      </Screen>
+    );
+  }
+
+  const step = guide.steps[pos]!;
+  return (
+    <Screen scroll>
+      <Text variant="caption" muted>
+        STEP {pos + 1} / {guide.steps.length}
+      </Text>
+      <Text variant="title">{step.title}</Text>
+      <Text>{step.instruction}</Text>
+
+      {step.safetyWarning ? (
+        <Card style={{ backgroundColor: theme.colors.dangerBg, borderColor: theme.colors.danger }}>
+          <Text variant="caption" color={theme.colors.danger}>
+            ⚠ SAFETY
+          </Text>
+          <Text>{step.safetyWarning}</Text>
+        </Card>
+      ) : null}
+
+      {step.tools.length > 0 || step.parts.length > 0 ? (
+        <Card>
+          {step.tools.length > 0 ? <Text variant="caption" muted>TOOLS: {step.tools.join(', ')}</Text> : null}
+          {step.parts.length > 0 ? <Text variant="caption" muted>PARTS: {step.parts.join(', ')}</Text> : null}
+        </Card>
+      ) : null}
+
+      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+        {pos > 0 ? (
+          <Button label="Back" variant="secondary" fullWidth={false} onPress={() => setPos(pos - 1)} />
+        ) : null}
+        <Button
+          label={pos === guide.steps.length - 1 ? 'Finish' : 'Continue'}
+          onPress={() => setPos(pos + 1)}
+          style={{ flex: 1 }}
+        />
+      </View>
+    </Screen>
+  );
+}

@@ -65,13 +65,17 @@ Les URLs pré-signées restent possibles plus tard (optim).
 
 ---
 
-## PHASE 5 — REPAIR GUIDE ⏳
+## PHASE 5 — REPAIR GUIDE ✅
 
-- ⏳ `POST /diagnoses/:id/repair-guide` (étapes, outils, pièces, avertissements)
-- ⏳ Écran guide pas-à-pas (1 étape / écran, [Continue])
-- ⏳ Sections TOOLS / PARTS / OPTIONAL
-- ⏳ Pièce requise + prix `$x–y` ou « Price unavailable »
-- ⏳ Encadrés ⚠ SAFETY par étape
+- ✅ `AIProvider.generateRepairGuide()` (Gemini `responseSchema` dédié + `MockProvider`)
+- ✅ `GET /diagnoses/:id/repair-guide` : 404 si diag inconnu, **409 `forced_stop`** si danger, sinon génère + met en cache dans R2 (`guides/{id}.json`)
+- ✅ `repairGuideSchema` étendu : `summary`, `generalWarnings` ; `coerceRepairGuide()` (casse + ré-indexation 0-based des étapes)
+- ✅ `DELETE /diagnoses/:id` supprime aussi le guide en cache
+- ✅ Écran `repair/[id]` : loader → `RepairGuideView`
+- ✅ `RepairGuideView` : aperçu (résumé, difficulté, temps, ⚠ BEFORE YOU START, **TOOLS / PARTS / OPTIONAL**, prix `$x–y` ou **« Price unavailable »**) → **guide pas-à-pas 1 étape/écran** (STEP n/N, [Back]/[Continue], encadré **⚠ SAFETY** par étape) → écran « Done 🎉 »
+- ✅ 41 tests (26 shared + 15 api). Guide vérifié contre Gemini réel (charnière meuble : 6 étapes, safety warnings, prix « unavailable »)
+
+**Note :** le mobile suit sa propre position d'étape (0-based), la numérotation du modèle est ignorée.
 
 ---
 

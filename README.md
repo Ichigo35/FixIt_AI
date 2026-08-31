@@ -69,12 +69,12 @@ Secrets : copier `.env.example` et renseigner `apps/api/.dev.vars` (jamais commi
 
 ## État du projet
 
-**PHASE 4 — DIAGNOSIS terminée.** Pipeline complet opérationnel : photo/texte → upload R2 →
-`POST /diagnoses` → **Gemini** (`gemini-3.6-flash`, JSON structuré) → validation Zod →
-`classifySafety` (déterministe) → `computeRepairabilityScore` → écran résultat, ou écran
-**STOP** si danger réel. Abstraction `AIProvider` (Gemini + Mock). 37 tests verts, les 5
-scénarios de référence vérifiés contre Gemini réel.
-Prochaine étape : **PHASE 5 — REPAIR GUIDE**. Voir `TODO.md`.
+**PHASE 5 — REPAIR GUIDE terminée.** Pipeline complet : photo/texte → upload R2 →
+`POST /diagnoses` → **Gemini** (JSON structuré) → Zod → `classifySafety` →
+`computeRepairabilityScore` → écran résultat (ou **STOP**), puis
+`GET /diagnoses/:id/repair-guide` → guide pas-à-pas (TOOLS/PARTS/OPTIONAL, ⚠ SAFETY
+par étape, prix ou « Price unavailable »). Abstraction `AIProvider` (Gemini + Mock).
+41 tests verts. Prochaine étape : **PHASE 6 — NEON + AUTH + STORAGE**. Voir `TODO.md`.
 
 ## Documents
 

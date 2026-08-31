@@ -1,5 +1,11 @@
-import { coerceRawDiagnosis, type RawDiagnosis } from '@fixit/shared';
-import type { AIProvider, DiagnoseInput } from './types';
+import {
+  coerceRawDiagnosis,
+  coerceRepairGuide,
+  skillForDifficulty,
+  type RawDiagnosis,
+  type RepairGuide,
+} from '@fixit/shared';
+import type { AIProvider, DiagnoseInput, RepairGuideInput } from './types';
 
 /**
  * Provider déterministe, sans réseau. Utilisé pour les tests et en secours
@@ -42,6 +48,53 @@ export class MockProvider implements AIProvider {
       moreInfoNeeded: [
         'This is a placeholder diagnosis (no AI key configured).',
         'Add a clear photo of the problem and of the model label.',
+      ],
+    });
+  }
+
+  async generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide> {
+    const d = input.diagnosis;
+    return coerceRepairGuide({
+      summary: `Placeholder guide for: ${d.problem} (no AI key configured).`,
+      difficulty: d.difficulty,
+      estimatedTimeMinutes: d.estimatedTimeMinutes ?? 30,
+      requiredSkill: skillForDifficulty(d.difficulty),
+      tools: d.tools.length ? d.tools : ['Screwdriver', 'Flashlight'],
+      parts: d.parts,
+      optional: ['Work gloves', 'Small parts tray'],
+      generalWarnings: ['This is a placeholder guide — configure an AI key for a real one.'],
+      steps: [
+        {
+          index: 0,
+          title: 'Make the item safe',
+          instruction:
+            'Disconnect the item from any power, water or gas supply and let it cool before starting.',
+          safetyWarning: 'Do not work on the item while it is connected to mains power.',
+          tools: [],
+          parts: [],
+        },
+        {
+          index: 1,
+          title: 'Inspect the affected area',
+          instruction: `Look closely at the area related to: ${d.problem}. Note anything worn, loose or broken.`,
+          tools: ['Flashlight'],
+          parts: [],
+        },
+        {
+          index: 2,
+          title: 'Repair or replace',
+          instruction: d.recommendedAction,
+          tools: [],
+          parts: d.parts.map((p) => p.name),
+        },
+        {
+          index: 3,
+          title: 'Reassemble and test',
+          instruction:
+            'Put everything back together, reconnect the supply and check that the problem is resolved.',
+          tools: [],
+          parts: [],
+        },
       ],
     });
   }

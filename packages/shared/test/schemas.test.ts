@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coerceRawDiagnosis, rawDiagnosisSchema } from '../src/schemas';
+import { coerceRawDiagnosis, coerceRepairGuide, rawDiagnosisSchema } from '../src/schemas';
 
 const valid = {
   problem: 'Blocked drain pump filter',
@@ -50,5 +50,33 @@ describe('rawDiagnosisSchema', () => {
     expect(r.moreInfoNeeded).toEqual([]);
     expect(r.partsAvailability).toBe('unknown');
     expect(r.estimatedStepCount).toBe(4);
+  });
+});
+
+describe('coerceRepairGuide', () => {
+  const guide = {
+    summary: 'Replace the worn tap cartridge.',
+    difficulty: 'intermediate',
+    requiredSkill: 'Intermediate',
+    estimatedTimeMinutes: 30,
+    tools: ['Wrench'],
+    parts: [{ name: 'Cartridge', priceKnown: false }],
+    steps: [
+      { title: 'Shut off water', instruction: 'Close the isolation valves under the sink.' },
+      { title: 'Swap cartridge', instruction: 'Remove the retaining nut and replace the cartridge.' },
+    ],
+  };
+
+  it('normalise la casse et indexe les étapes', () => {
+    const r = coerceRepairGuide(guide);
+    expect(r.difficulty).toBe('INTERMEDIATE');
+    expect(r.requiredSkill).toBe('intermediate');
+    expect(r.steps[0]?.index).toBe(0);
+    expect(r.steps[1]?.index).toBe(1);
+    expect(r.generalWarnings).toEqual([]);
+  });
+
+  it('rejette un guide sans étapes', () => {
+    expect(() => coerceRepairGuide({ ...guide, steps: [] })).toThrow();
   });
 });

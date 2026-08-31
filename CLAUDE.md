@@ -27,9 +27,10 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 | 1 — Audit | ✅ terminée · push OK (2026-08-31) |
 | 2 — Foundation | ✅ monorepo pnpm, shared+api+mobile, push OK |
 | 3 — Camera | ✅ expo-camera + image-picker + `POST /uploads` → R2, push OK |
-| 4 — Diagnosis | ✅ AIProvider/Gemini + `POST /diagnoses` + safety repensé + écran résultat + STOP, 37 tests, push OK |
-| 5 — Repair guide | ⏳ prochaine (`POST /diagnoses/:id/repair-guide` + écran pas-à-pas) |
-| 6–10 | ⏳ voir `TODO.md` |
+| 4 — Diagnosis | ✅ AIProvider/Gemini + `POST /diagnoses` + safety repensé + écran résultat + STOP, push OK |
+| 5 — Repair guide | ✅ `GET /diagnoses/:id/repair-guide` + `RepairGuideView` pas-à-pas + ⚠ SAFETY, 41 tests, push OK |
+| 6 — Neon + Auth + Storage | ⏳ prochaine (migrations Drizzle, Neon Auth, RLS, quota FREE 3/mois, `wrangler login` + bucket R2) |
+| 7–10 | ⏳ voir `TODO.md` |
 
 ## Infra provisionnée
 

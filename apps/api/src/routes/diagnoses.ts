@@ -8,7 +8,13 @@ import {
 import type { Env } from '../env';
 import { AIProviderError, getAIProvider } from '../providers';
 import type { DiagnoseImage } from '../providers/types';
-import { deleteDiagnosis, loadDiagnosis, saveDiagnosis } from '../storage/diagnoses';
+import {
+  deleteDiagnosis,
+  loadDiagnosis,
+  loadRepairGuide,
+  saveDiagnosis,
+  saveRepairGuide,
+} from '../storage/diagnoses';
 
 export const diagnoses = new Hono<{ Bindings: Env }>();
 
@@ -86,6 +92,40 @@ diagnoses.get('/:id', async (c) => {
   const found = await loadDiagnosis(c.env, c.req.param('id'));
   if (!found) return c.json({ error: 'not_found' }, 404);
   return c.json(found);
+});
+
+/** GET /diagnoses/:id/repair-guide — génère (et met en cache) le guide pas-à-pas. */
+diagnoses.get('/:id/repair-guide', async (c) => {
+  const id = c.req.param('id');
+  const diagnosis = await loadDiagnosis(c.env, id);
+  if (!diagnosis) return c.json({ error: 'not_found' }, 404);
+
+  if (diagnosis.safety.forcedStop) {
+    return c.json({ error: 'guide_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
+  }
+
+  const cached = await loadRepairGuide(c.env, id);
+  if (cached) return c.json(cached);
+
+  const provider = getAIProvider(c.env);
+  let guide;
+  try {
+    guide = await provider.generateRepairGuide({
+      diagnosis: diagnosis.diagnosis,
+      category: diagnosis.category,
+      description: diagnosis.input.description,
+      brand: diagnosis.input.brand,
+      model: diagnosis.input.model,
+    });
+  } catch (err) {
+    if (err instanceof AIProviderError) {
+      return c.json({ error: err.code, message: err.message }, err.code === 'ai_request_failed' ? 502 : 422);
+    }
+    throw err;
+  }
+
+  await saveRepairGuide(c.env, id, guide);
+  return c.json(guide);
 });
 
 diagnoses.delete('/:id', async (c) => {

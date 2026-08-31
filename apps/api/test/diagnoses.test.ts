@@ -63,6 +63,46 @@ describe('POST /diagnoses (provider mock)', () => {
     expect(((await res.json()) as any).error).toBe('image_not_found');
   });
 
+  it('repair-guide : 409 si forcedStop, sinon guide pas-à-pas', async () => {
+    const IMAGES = memoryBucket();
+    const env = { ...baseEnv, IMAGES };
+    const app = createApp();
+
+    // cas dangereux -> forcedStop
+    const danger = (await (
+      await post(app, { description: 'the mains power cord is cut and copper is exposed' }, env)
+    ).json()) as { id: string; safety: { forcedStop: boolean } };
+    expect(danger.safety.forcedStop).toBe(true);
+    const blocked = await app.request(`/diagnoses/${danger.id}/repair-guide`, {}, env);
+    expect(blocked.status).toBe(409);
+    expect(((await blocked.json()) as any).reason).toBe('forced_stop');
+
+    // cas bénin -> guide
+    const ok = (await (
+      await post(app, { description: 'the cabinet door hinge is loose and squeaks' }, env)
+    ).json()) as { id: string };
+    const guideRes = await app.request(`/diagnoses/${ok.id}/repair-guide`, {}, env);
+    expect(guideRes.status).toBe(200);
+    const guide = (await guideRes.json()) as any;
+    expect(guide.steps.length).toBeGreaterThan(0);
+    expect(guide.steps[0].index).toBe(0);
+
+    // mise en cache : deuxième appel identique
+    const again = await app.request(`/diagnoses/${ok.id}/repair-guide`, {}, env);
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as any).summary).toBe(guide.summary);
+  });
+
+  it('repair-guide : 404 si diagnostic inconnu', async () => {
+    const app = createApp();
+    const res = await app.request(
+      '/diagnoses/00000000-0000-0000-0000-000000000000/repair-guide',
+      {},
+      { ...baseEnv, IMAGES: memoryBucket() },
+    );
+    expect(res.status).toBe(404);
+  });
+
   it('avec image + persistance, puis GET puis DELETE', async () => {
     const IMAGES = memoryBucket();
     const env = { ...baseEnv, IMAGES };

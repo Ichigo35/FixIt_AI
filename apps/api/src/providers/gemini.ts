@@ -1,7 +1,23 @@
-import { coerceRawDiagnosis, type RawDiagnosis } from '@fixit/shared';
+import {
+  coerceRawDiagnosis,
+  coerceRepairGuide,
+  type RawDiagnosis,
+  type RepairGuide,
+} from '@fixit/shared';
+import { GEMINI_REPAIR_SCHEMA } from './geminiRepairSchema';
 import { GEMINI_RESPONSE_SCHEMA } from './geminiSchema';
-import { buildUserPrompt, SYSTEM_PROMPT } from './prompt';
-import { AIProviderError, type AIProvider, type DiagnoseInput } from './types';
+import {
+  buildRepairGuidePrompt,
+  buildUserPrompt,
+  REPAIR_SYSTEM_PROMPT,
+  SYSTEM_PROMPT,
+} from './prompt';
+import {
+  AIProviderError,
+  type AIProvider,
+  type DiagnoseInput,
+  type RepairGuideInput,
+} from './types';
 
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -21,7 +37,7 @@ interface GeminiPart {
 }
 
 interface GeminiResponse {
-  candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+  candidates?: { content?: { parts?: { text?: string }[] } }[];
   promptFeedback?: { blockReason?: string };
 }
 
@@ -38,21 +54,33 @@ export class GeminiProvider implements AIProvider {
     for (const img of input.images) {
       parts.push({ inline_data: { mime_type: img.contentType, data: toBase64(img.data) } });
     }
+    return this.structured(SYSTEM_PROMPT, GEMINI_RESPONSE_SCHEMA, parts, coerceRawDiagnosis);
+  }
 
-    const raw = await this.call(parts);
+  async generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide> {
+    const parts: GeminiPart[] = [{ text: buildRepairGuidePrompt(input) }];
+    return this.structured(REPAIR_SYSTEM_PROMPT, GEMINI_REPAIR_SCHEMA, parts, coerceRepairGuide);
+  }
+
+  /** Appel avec sortie JSON contrainte + 1 tentative de réparation. */
+  private async structured<T>(
+    systemPrompt: string,
+    schema: unknown,
+    parts: GeminiPart[],
+    coerce: (raw: unknown) => T,
+  ): Promise<T> {
+    const first = await this.call(systemPrompt, schema, parts);
     try {
-      return coerceRawDiagnosis(JSON.parse(raw));
+      return coerce(JSON.parse(first));
     } catch (err) {
-      // Une tentative de réparation en renvoyant l'erreur au modèle.
-      const repairParts: GeminiPart[] = [
+      const repaired = await this.call(systemPrompt, schema, [
         ...parts,
         {
-          text: `Your previous JSON was invalid (${(err as Error).message}). Return a corrected JSON object matching the schema exactly. Previous output:\n${raw}`,
+          text: `Your previous JSON was invalid (${(err as Error).message}). Return a corrected JSON object matching the schema exactly. Previous output:\n${first}`,
         },
-      ];
-      const repaired = await this.call(repairParts);
+      ]);
       try {
-        return coerceRawDiagnosis(JSON.parse(repaired));
+        return coerce(JSON.parse(repaired));
       } catch (err2) {
         throw new AIProviderError(
           'ai_bad_output',
@@ -62,19 +90,19 @@ export class GeminiProvider implements AIProvider {
     }
   }
 
-  private async call(parts: GeminiPart[]): Promise<string> {
+  private async call(systemPrompt: string, schema: unknown, parts: GeminiPart[]): Promise<string> {
     let res: Response;
     try {
       res = await fetch(`${API_ROOT}/${this.model}:generateContent`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': this.apiKey },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts }],
           generationConfig: {
             temperature: 0.2,
             responseMimeType: 'application/json',
-            responseSchema: GEMINI_RESPONSE_SCHEMA,
+            responseSchema: schema,
           },
         }),
       });
@@ -84,23 +112,15 @@ export class GeminiProvider implements AIProvider {
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      throw new AIProviderError(
-        'ai_request_failed',
-        `Gemini HTTP ${res.status}: ${detail.slice(0, 300)}`,
-      );
+      throw new AIProviderError('ai_request_failed', `Gemini HTTP ${res.status}: ${detail.slice(0, 300)}`);
     }
 
     const body = (await res.json()) as GeminiResponse;
     if (body.promptFeedback?.blockReason) {
-      throw new AIProviderError(
-        'ai_bad_output',
-        `Gemini blocked the prompt: ${body.promptFeedback.blockReason}`,
-      );
+      throw new AIProviderError('ai_bad_output', `Gemini blocked the prompt: ${body.promptFeedback.blockReason}`);
     }
     const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
-    if (!text.trim()) {
-      throw new AIProviderError('ai_bad_output', 'Gemini returned an empty response');
-    }
+    if (!text.trim()) throw new AIProviderError('ai_bad_output', 'Gemini returned an empty response');
     return text;
   }
 }

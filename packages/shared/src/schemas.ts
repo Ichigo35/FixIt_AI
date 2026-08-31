@@ -91,15 +91,34 @@ export const repairStepSchema = z.object({
 export type RepairStep = z.infer<typeof repairStepSchema>;
 
 export const repairGuideSchema = z.object({
+  summary: z.string().min(1),
   difficulty: z.enum(DIFFICULTIES),
   estimatedTimeMinutes: z.number().int().positive().nullable(),
   requiredSkill: z.enum(['basic', 'intermediate', 'advanced', 'pro']),
   tools: z.array(z.string().min(1)).default([]),
   parts: z.array(partSchema).default([]),
   optional: z.array(z.string().min(1)).default([]),
-  steps: z.array(repairStepSchema).min(1),
+  /** Avertissements de sécurité généraux, avant de commencer. */
+  generalWarnings: z.array(z.string().min(1)).default([]),
+  steps: z.array(repairStepSchema).min(1).max(20),
 });
 export type RepairGuide = z.infer<typeof repairGuideSchema>;
+
+/** Parse permissif de la sortie modèle pour le guide de réparation. */
+export function coerceRepairGuide(input: unknown): RepairGuide {
+  const obj = (typeof input === 'object' && input !== null ? input : {}) as Record<string, unknown>;
+  if (typeof obj.difficulty === 'string') obj.difficulty = obj.difficulty.toUpperCase();
+  if (typeof obj.requiredSkill === 'string') obj.requiredSkill = obj.requiredSkill.toLowerCase();
+  if (Array.isArray(obj.steps)) {
+    // Ré-indexation 0-based par position (on ignore la numérotation du modèle).
+    obj.steps = obj.steps.map((s, i) => {
+      const step = (typeof s === 'object' && s !== null ? s : {}) as Record<string, unknown>;
+      step.index = i;
+      return step;
+    });
+  }
+  return repairGuideSchema.parse(obj);
+}
 
 /* ------------------------------ Requêtes API ------------------------------ */
 

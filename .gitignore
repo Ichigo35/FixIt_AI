@@ -33,3 +33,6 @@ ios/Pods/
 android/.gradle/
 *.keystore
 !debug.keystore
+
+# Playwright MCP scratch
+.playwright-mcp/

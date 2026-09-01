@@ -129,6 +129,56 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(((await res.json()) as any).error).toBe('image_not_found');
   });
 
+  it('historique : feedback + outcome + statut mis à jour', async () => {
+    const uid = freshUser();
+    const app = createApp();
+    const created = (await (
+      await post(app, { description: 'loose towel rail on the wall' }, env(), uid)
+    ).json()) as { id: string };
+
+    const hist = await app.request(
+      `/diagnoses/${created.id}/history`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...devAuth(uid) },
+        body: JSON.stringify({ outcome: 'fixed', feedbackWorked: true, feedbackNote: 'easy fix' }),
+      },
+      env(),
+    );
+    expect(hist.status).toBe(201);
+    expect(((await hist.json()) as any).history.length).toBe(1);
+
+    const detail = (await (
+      await app.request(`/diagnoses/${created.id}`, { headers: devAuth(uid) }, env())
+    ).json()) as any;
+    expect(detail.status).toBe('fixed');
+    expect(detail.history[0].outcome).toBe('fixed');
+
+    const list = (await (
+      await app.request('/diagnoses', { headers: devAuth(uid) }, env())
+    ).json()) as any;
+    expect(list.items[0].status).toBe('fixed');
+  });
+
+  it('historique : 404 si le diagnostic n\'appartient pas à l\'utilisateur', async () => {
+    const uid = freshUser();
+    const other = freshUser();
+    const app = createApp();
+    const created = (await (
+      await post(app, { description: 'wobbly table' }, env(), uid)
+    ).json()) as { id: string };
+    const res = await app.request(
+      `/diagnoses/${created.id}/history`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...devAuth(other) },
+        body: JSON.stringify({ outcome: 'fixed' }),
+      },
+      env(),
+    );
+    expect(res.status).toBe(404);
+  });
+
   it('avec image : upload puis diagnostic', async () => {
     const uid = freshUser();
     const e = env();

@@ -229,6 +229,17 @@ export async function saveRepairGuide(
     .onConflictDoUpdate({ target: repairGuides.diagnosisId, set: { data: guide, aiProvider, aiModel } });
 }
 
+export interface HistoryEntry {
+  id: string;
+  outcome: string;
+  feedbackWorked: boolean | null;
+  feedbackNote: string | null;
+  summary: string | null;
+  beforeR2Key: string | null;
+  afterR2Key: string | null;
+  createdAt: string;
+}
+
 export async function addHistory(
   db: Db,
   userId: string,
@@ -249,4 +260,26 @@ export async function addHistory(
     .update(diagnoses)
     .set({ status, updatedAt: new Date() })
     .where(and(eq(diagnoses.id, diagnosisId), eq(diagnoses.userId, userId)));
+}
+
+export async function listHistory(
+  db: Db,
+  userId: string,
+  diagnosisId: string,
+): Promise<HistoryEntry[]> {
+  const rows = await db
+    .select()
+    .from(repairHistory)
+    .where(and(eq(repairHistory.diagnosisId, diagnosisId), eq(repairHistory.userId, userId)))
+    .orderBy(desc(repairHistory.createdAt));
+  return rows.map((r) => ({
+    id: r.id,
+    outcome: r.outcome,
+    feedbackWorked: r.feedbackWorked,
+    feedbackNote: r.feedbackNote,
+    summary: r.summary,
+    beforeR2Key: r.beforeR2Key,
+    afterR2Key: r.afterR2Key,
+    createdAt: new Date(r.createdAt).toISOString(),
+  }));
 }

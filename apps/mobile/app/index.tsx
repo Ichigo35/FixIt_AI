@@ -89,6 +89,21 @@ export default function HomeScreen() {
         </Card>
       ) : null}
 
+      <Card onPress={() => router.push('/history')}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+          <Text style={{ fontSize: 26 }}>🧰</Text>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="heading">My Repairs</Text>
+            <Text variant="caption" muted>
+              Past diagnoses, guides and before/after
+            </Text>
+          </View>
+          <Text variant="heading" muted>
+            ›
+          </Text>
+        </View>
+      </Card>
+
       <View style={{ gap: theme.spacing.md }}>
         {ACTIONS.map((action) => (
           <Card

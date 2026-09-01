@@ -3,11 +3,13 @@ import {
   assessDiagnosis,
   createDiagnosisRequestSchema,
   diagnosisResultSchema,
+  historyRequestSchema,
   type DiagnosisResult,
 } from '@fixit/shared';
 import { requireAuth } from '../auth/middleware';
 import { getDb } from '../db/client';
 import {
+  addHistory,
   consumeQuota,
   deleteDiagnosis,
   ensureUser,
@@ -15,6 +17,7 @@ import {
   getRepairGuide,
   insertDiagnosis,
   listDiagnoses,
+  listHistory,
   saveRepairGuide,
   type ImageMeta,
 } from '../db/repos';
@@ -124,9 +127,48 @@ diagnoses.get('/', async (c) => {
 
 diagnoses.get('/:id', async (c) => {
   const db = getDb(c.env);
-  const found = await getDiagnosis(db, c.get('userId'), c.req.param('id'));
+  const userId = c.get('userId');
+  const id = c.req.param('id');
+  const found = await getDiagnosis(db, userId, id);
   if (!found) return c.json({ error: 'not_found' }, 404);
-  return c.json(found);
+  const history = await listHistory(db, userId, id);
+  return c.json({ ...found, history });
+});
+
+/** POST /diagnoses/:id/history — issue de réparation + feedback + avant/après. */
+diagnoses.post('/:id/history', async (c) => {
+  const db = getDb(c.env);
+  const userId = c.get('userId');
+  const id = c.req.param('id');
+
+  const diagnosis = await getDiagnosis(db, userId, id);
+  if (!diagnosis) return c.json({ error: 'not_found' }, 404);
+
+  const parsed = historyRequestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: 'invalid_request', issues: parsed.error.issues }, 400);
+  }
+  const body = parsed.data;
+
+  // Résout un imageId -> clé R2 en vérifiant l'appartenance.
+  const resolveKey = async (imageId?: string | null): Promise<string | null> => {
+    if (!imageId || !c.env.IMAGES) return null;
+    const obj = await c.env.IMAGES.get(`uploads/${imageId}`);
+    if (!obj) return null;
+    if (obj.customMetadata?.userId && obj.customMetadata.userId !== userId) return null;
+    return `uploads/${imageId}`;
+  };
+
+  await addHistory(db, userId, id, {
+    outcome: body.outcome,
+    feedbackWorked: body.feedbackWorked ?? null,
+    feedbackNote: body.feedbackNote ?? null,
+    beforeR2Key: await resolveKey(body.beforeImageId),
+    afterR2Key: await resolveKey(body.afterImageId),
+  });
+
+  const history = await listHistory(db, userId, id);
+  return c.json({ ok: true, history }, 201);
 });
 
 diagnoses.delete('/:id', async (c) => {

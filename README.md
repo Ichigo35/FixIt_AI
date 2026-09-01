@@ -69,12 +69,13 @@ Secrets : copier `.env.example` et renseigner `apps/api/.dev.vars` (jamais commi
 
 ## État du projet
 
-**PHASE 6 — NEON + AUTH + STORAGE terminée.** Auth **Neon Auth (Stack)** email/password,
-persistance **PostgreSQL/Neon** (Drizzle, 5 tables), images dans **R2**, quota **FREE 3/mois**,
-toutes les routes protégées et filtrées par utilisateur. Le pipeline complet
-(photo/texte → diagnostic → guide pas-à-pas, avec écran STOP) est en place depuis les
-phases 4–5. 41 tests verts (API en intégration contre Neon).
-Prochaine étape : **PHASE 7 — HISTORY**. Voir `TODO.md`.
+**PHASES 1–7 terminées — le MVP est fonctionnel de bout en bout.**
+Auth **Neon Auth (Stack)**, persistance **PostgreSQL/Neon** (Drizzle), images **R2**,
+quota **FREE 3/mois**. Parcours complet : sign-in → photo/texte → upload → diagnostic
+**Gemini** structuré → sécurité déterministe (écran **STOP** si danger) → guide pas-à-pas
+→ historique **« My Repairs »** rouvrable, feedback 👍/👎, avant/après.
+43 tests verts (API en intégration contre Neon).
+Prochaines étapes : **PHASE 10 — POLISH** (le MVP est là ; 8 et 9 sont V2/V3). Voir `TODO.md`.
 
 ## Documents
 

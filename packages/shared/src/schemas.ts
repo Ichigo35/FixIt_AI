@@ -138,6 +138,18 @@ export type UploadContentType = (typeof UPLOAD_CONTENT_TYPES)[number];
 /** Taille maximale acceptée par `POST /uploads` (octets). */
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
+export const REPAIR_OUTCOMES = ['fixed', 'not_fixed', 'pro'] as const;
+export type RepairOutcome = (typeof REPAIR_OUTCOMES)[number];
+
+export const historyRequestSchema = z.object({
+  outcome: z.enum(REPAIR_OUTCOMES),
+  feedbackWorked: z.boolean().nullable().optional(),
+  feedbackNote: z.string().max(1000).nullable().optional(),
+  beforeImageId: z.string().uuid().nullable().optional(),
+  afterImageId: z.string().uuid().nullable().optional(),
+});
+export type HistoryRequest = z.infer<typeof historyRequestSchema>;
+
 export const uploadRequestSchema = z.object({
   contentType: z.enum(UPLOAD_CONTENT_TYPES),
   kind: z.enum(IMAGE_KINDS).default('problem'),

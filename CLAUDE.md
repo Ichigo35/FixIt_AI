@@ -29,9 +29,11 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 | 3 — Camera | ✅ expo-camera + image-picker + `POST /uploads` → R2, push OK |
 | 4 — Diagnosis | ✅ AIProvider/Gemini + `POST /diagnoses` + safety repensé + écran résultat + STOP, push OK |
 | 5 — Repair guide | ✅ `GET /diagnoses/:id/repair-guide` + `RepairGuideView` pas-à-pas, push OK |
-| 6 — Neon + Auth + Storage | ✅ Neon Auth (Stack), Drizzle (5 tables), persistance Postgres, quota FREE 3/30j, auth mobile, 41 tests, push OK |
-| 7 — History | ⏳ prochaine (`My Repairs`, détail rouvrable, avant/après, feedback 👍/👎) |
-| 8–10 | ⏳ voir `TODO.md` |
+| 6 — Neon + Auth + Storage | ✅ Neon Auth (Stack), Drizzle, persistance Postgres, quota, auth mobile, push OK |
+| 7 — History | ✅ `My Repairs`, détail rouvrable, `POST /diagnoses/:id/history`, avant/après, feedback 👍/👎, 43 tests, push OK |
+| 8 — Interactive repair | ⏳ V2 (voir `TODO.md`) |
+| 9 — Video | ⏳ V3 |
+| 10 — Polish | ⏳ animations, onboarding, a11y, erreurs, perfs |
 
 ## Infra provisionnée
 

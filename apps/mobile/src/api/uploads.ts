@@ -1,5 +1,22 @@
 import type { ImageKind, UploadResult } from '@fixit/shared';
-import { apiPostBinary } from './client';
+import { config } from '@/config';
+import { apiPostBinary, authBridge } from './client';
+
+/** Source d'image authentifiée pour <Image> (expo-image supporte `headers`). */
+export function imageSource(imageId: string) {
+  const token = authBridge.getAccessToken();
+  return {
+    uri: `${config.apiBaseUrl}/uploads/${imageId}`,
+    headers: token ? { authorization: `Bearer ${token}` } : undefined,
+  };
+}
+
+/** À partir d'une clé R2 `uploads/{id}`. */
+export function imageSourceFromKey(r2Key: string | null) {
+  if (!r2Key) return null;
+  const id = r2Key.split('/').pop();
+  return id ? imageSource(id) : null;
+}
 
 function contentTypeFor(uri: string): string {
   const lower = uri.toLowerCase();

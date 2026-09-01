@@ -95,12 +95,16 @@ Les URLs pré-signées restent possibles plus tard (optim).
 
 ---
 
-## PHASE 7 — HISTORY ⏳
+## PHASE 7 — HISTORY ✅
 
-- ⏳ `GET /diagnoses` paginé, écran « My Repairs »
-- ⏳ Détail rouvrable
-- ⏳ Avant / après + « Problem solved 🎉 »
-- ⏳ Feedback 👍 / 👎 + « What happened? »
+- ✅ `GET /diagnoses` (liste) + écran **« My Repairs »** (problème, temps relatif, badge de statut)
+- ✅ Détail **rouvrable** : `app/diagnosis/[id].tsx` → `GET /diagnoses/:id` (inclut `history` + `status`) → `DiagnosisResultView` (ou `StopView`) + `OutcomeSection`
+- ✅ `POST /diagnoses/:id/history` : `outcome` (fixed / not_fixed / pro) + `feedbackWorked` + `feedbackNote` + `beforeImageId` / `afterImageId` (résolus en clés R2, appartenance vérifiée) → met à jour `diagnoses.status`
+- ✅ **Avant / après** : `OutcomeSection` affiche BEFORE (photo du diagnostic) / AFTER (photo ajoutée), + **« Problem solved 🎉 »**
+- ✅ **Feedback 👍 / 👎 / 🔧 pro** ; 👎 → champ « What happened? »
+- ✅ `imageSource()` / `imageSourceFromKey()` : images authentifiées (`<Image headers>`)
+- ✅ Entrée « My Repairs » sur l'accueil
+- ✅ 43 tests (26 shared + 17 api : historique + isolation historique)
 
 ---
 

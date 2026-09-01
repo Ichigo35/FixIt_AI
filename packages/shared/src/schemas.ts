@@ -120,6 +120,106 @@ export function coerceRepairGuide(input: unknown): RepairGuide {
   return repairGuideSchema.parse(obj);
 }
 
+/* --------------------------- Réparation interactive --------------------------- */
+
+/**
+ * Verdict d'une vérification d'étape par l'IA (vision).
+ * `pass` = fait correctement · `retry` = à refaire/ajuster · `unsafe` = danger
+ * observé (l'app propose d'arrêter) · `unclear` = photo insuffisante.
+ */
+export const STEP_VERDICTS = ['pass', 'retry', 'unsafe', 'unclear'] as const;
+export type StepVerdict = (typeof STEP_VERDICTS)[number];
+
+/** Sortie brute du modèle pour la vérification d'une étape. */
+export const rawStepCheckSchema = z.object({
+  verdict: z.enum(STEP_VERDICTS),
+  summary: z.string().min(1),
+  advice: z.array(z.string().min(1)).max(6).default([]),
+  /** true si l'IA repère un danger — l'app propose d'arrêter et d'appeler un pro. */
+  escalate: z.boolean().default(false),
+});
+export type RawStepCheck = z.infer<typeof rawStepCheckSchema>;
+
+const STEP_VERDICT_ALIASES: Record<string, StepVerdict> = {
+  pass: 'pass',
+  ok: 'pass',
+  good: 'pass',
+  done: 'pass',
+  complete: 'pass',
+  completed: 'pass',
+  looks_good: 'pass',
+  success: 'pass',
+  retry: 'retry',
+  redo: 'retry',
+  again: 'retry',
+  needs_work: 'retry',
+  incomplete: 'retry',
+  not_done: 'retry',
+  fail: 'retry',
+  unsafe: 'unsafe',
+  danger: 'unsafe',
+  dangerous: 'unsafe',
+  stop: 'unsafe',
+  hazard: 'unsafe',
+  unclear: 'unclear',
+  unknown: 'unclear',
+  uncertain: 'unclear',
+  cant_tell: 'unclear',
+  cannot_tell: 'unclear',
+};
+
+/** Parse permissif de la sortie modèle pour la vérification d'étape. */
+export function coerceRawStepCheck(input: unknown): RawStepCheck {
+  const obj = (typeof input === 'object' && input !== null ? input : {}) as Record<string, unknown>;
+  if (typeof obj.verdict === 'string') {
+    const key = obj.verdict
+      .toLowerCase()
+      .trim()
+      .replace(/['’.]/g, '')
+      .replace(/[\s-]+/g, '_');
+    obj.verdict = STEP_VERDICT_ALIASES[key] ?? key;
+  }
+  if (obj.escalate == null && obj.verdict === 'unsafe') obj.escalate = true;
+  if (typeof obj.advice === 'string') obj.advice = [obj.advice];
+  return rawStepCheckSchema.parse(obj);
+}
+
+/** Une vérification d'étape enregistrée dans la session. */
+export const repairCheckSchema = z.object({
+  stepIndex: z.number().int().nonnegative(),
+  imageId: z.string(),
+  verdict: z.enum(STEP_VERDICTS),
+  summary: z.string(),
+  advice: z.array(z.string()).default([]),
+  escalate: z.boolean().default(false),
+  createdAt: z.string(),
+});
+export type RepairCheck = z.infer<typeof repairCheckSchema>;
+
+export const REPAIR_SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
+export type RepairSessionStatus = (typeof REPAIR_SESSION_STATUSES)[number];
+
+/** État d'une session de réparation interactive (autorité serveur). */
+export const repairSessionSchema = z.object({
+  id: z.string(),
+  diagnosisId: z.string(),
+  status: z.enum(REPAIR_SESSION_STATUSES),
+  /** Index de la prochaine étape non validée (0-based). */
+  currentStep: z.number().int().nonnegative(),
+  stepCount: z.number().int().nonnegative(),
+  checks: z.array(repairCheckSchema).default([]),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type RepairSession = z.infer<typeof repairSessionSchema>;
+
+export const verifyStepRequestSchema = z.object({
+  stepIndex: z.number().int().nonnegative(),
+  imageId: z.string().uuid(),
+  note: z.string().max(600).default(''),
+});
+export type VerifyStepRequest = z.infer<typeof verifyStepRequestSchema>;
+
 /* ------------------------------ Requêtes API ------------------------------ */
 
 export const createDiagnosisRequestSchema = z.object({

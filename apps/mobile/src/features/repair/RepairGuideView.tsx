@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import type { Part, RepairGuide } from '@fixit/shared';
+import type { Part, RepairGuide, StepVerdict } from '@fixit/shared';
 import { Button, Card, DifficultyBadge, FadeInView, Screen, Text } from '@/components';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
+import { StepCheck } from './StepCheck';
 
 function priceLabel(p: Part): string {
   if (!p.priceKnown || p.priceMin == null) return 'Price unavailable';
@@ -28,12 +29,20 @@ function List({ title, items }: { title: string; items: string[] }) {
   );
 }
 
-export function RepairGuideView({ guide }: { guide: RepairGuide }) {
+export function RepairGuideView({
+  guide,
+  diagnosisId,
+}: {
+  guide: RepairGuide;
+  diagnosisId?: string;
+}) {
   const theme = useTheme();
   const router = useRouter();
   // -1 = overview, 0..n-1 = steps, n = done
   const [pos, setPos] = useState(-1);
+  const [verdicts, setVerdicts] = useState<Record<number, StepVerdict>>({});
   const done = pos >= guide.steps.length;
+  const sawHazard = Object.values(verdicts).includes('unsafe');
 
   useEffect(() => {
     if (done) haptics.success();
@@ -104,11 +113,25 @@ export function RepairGuideView({ guide }: { guide: RepairGuide }) {
     return (
       <Screen>
         <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.lg }}>
-          <Text variant="display">Done 🎉</Text>
-          <Text muted>
-            You&apos;ve reached the end of the guide. If the problem is fixed, great — otherwise it may
-            be time to call a professional.
-          </Text>
+          <Text variant="display">{sawHazard ? 'Stop here 🛑' : 'Done 🎉'}</Text>
+          {sawHazard ? (
+            <Text muted>
+              A check flagged a possible hazard during this repair. Don&apos;t keep going — have the
+              item looked at by a qualified professional.
+            </Text>
+          ) : (
+            <Text muted>
+              You&apos;ve reached the end of the guide. If the problem is fixed, great — otherwise it
+              may be time to call a professional.
+            </Text>
+          )}
+          {diagnosisId ? (
+            <Button
+              label="Log the outcome"
+              variant="secondary"
+              onPress={() => router.replace({ pathname: '/diagnosis/[id]', params: { id: diagnosisId } })}
+            />
+          ) : null}
           <Button label="Back to home" onPress={() => router.replace('/')} />
         </View>
       </Screen>
@@ -151,6 +174,16 @@ export function RepairGuideView({ guide }: { guide: RepairGuide }) {
           {step.tools.length > 0 ? <Text variant="caption" muted>TOOLS: {step.tools.join(', ')}</Text> : null}
           {step.parts.length > 0 ? <Text variant="caption" muted>PARTS: {step.parts.join(', ')}</Text> : null}
         </Card>
+      ) : null}
+
+      {diagnosisId ? (
+        <StepCheck
+          key={pos}
+          diagnosisId={diagnosisId}
+          stepIndex={pos}
+          step={step}
+          onVerdict={(v) => setVerdicts((prev) => ({ ...prev, [pos]: v }))}
+        />
       ) : null}
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>

@@ -1,11 +1,13 @@
 import {
   coerceRawDiagnosis,
+  coerceRawStepCheck,
   coerceRepairGuide,
   skillForDifficulty,
   type RawDiagnosis,
+  type RawStepCheck,
   type RepairGuide,
 } from '@fixit/shared';
-import type { AIProvider, DiagnoseInput, RepairGuideInput } from './types';
+import type { AIProvider, DiagnoseInput, RepairGuideInput, VerifyStepInput } from './types';
 
 /**
  * Provider déterministe, sans réseau. Utilisé pour les tests et en secours
@@ -49,6 +51,33 @@ export class MockProvider implements AIProvider {
         'This is a placeholder diagnosis (no AI key configured).',
         'Add a clear photo of the problem and of the model label.',
       ],
+    });
+  }
+
+  async verifyStep(input: VerifyStepInput): Promise<RawStepCheck> {
+    const note = (input.note ?? '').toLowerCase();
+    const unsafe = /(spark|smoke|burn|shock|bare wire|exposed wire|gas|swollen|melt)/.test(note);
+    const retry = /(not|n't|cannot|can not|stuck|won't|wrong|broke|help|unsure|loose|gap)/.test(note);
+
+    if (unsafe) {
+      return coerceRawStepCheck({
+        verdict: 'unsafe',
+        summary: 'Your note mentions a possible hazard — stop and get a professional (mock check).',
+        advice: ['Disconnect all power and do not continue.', 'Contact a qualified professional.'],
+        escalate: true,
+      });
+    }
+    if (retry || input.image.data.byteLength === 0) {
+      return coerceRawStepCheck({
+        verdict: 'retry',
+        summary: `This step may not be complete yet: ${input.step.title} (mock check).`,
+        advice: ['Re-read the step instruction and adjust.', 'Take a clear, well-lit photo and check again.'],
+      });
+    }
+    return coerceRawStepCheck({
+      verdict: 'pass',
+      summary: `Looks done: ${input.step.title} (mock check — configure an AI key for a real one).`,
+      advice: [],
     });
   }
 

@@ -10,7 +10,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { RawDiagnosis, RepairGuide, SafetyResult } from '@fixit/shared';
+import type { RawDiagnosis, RepairCheck, RepairGuide, SafetyResult } from '@fixit/shared';
 
 /** Profil applicatif, clé = id utilisateur Neon Auth (Stack `sub`). */
 export const appUsers = pgTable('app_users', {
@@ -96,6 +96,24 @@ export const repairHistory = pgTable('repair_history', {
   feedbackNote: text('feedback_note'),
   summary: text('summary'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Réparation interactive : une session par diagnostic, avec l'historique des vérifications. */
+export const repairSessions = pgTable('repair_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  diagnosisId: uuid('diagnosis_id')
+    .notNull()
+    .unique()
+    .references(() => diagnoses.id, { onDelete: 'cascade' }),
+  userId: text('user_id')
+    .notNull()
+    .references(() => appUsers.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('active'),
+  currentStep: integer('current_step').notNull().default(0),
+  stepCount: integer('step_count').notNull().default(0),
+  checks: jsonb('checks').$type<RepairCheck[]>().notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const CURRENT_TIMESTAMP = sql`now()`;

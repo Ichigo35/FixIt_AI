@@ -1,4 +1,4 @@
-import type { Category, RawDiagnosis, RepairGuide } from '@fixit/shared';
+import type { Category, RawDiagnosis, RawStepCheck, RepairGuide, RepairStep } from '@fixit/shared';
 
 export interface DiagnoseImage {
   contentType: string;
@@ -22,11 +22,24 @@ export interface RepairGuideInput {
   model?: string | null;
 }
 
+export interface VerifyStepInput {
+  step: RepairStep;
+  stepNumber: number;
+  stepCount: number;
+  guideSummary: string;
+  diagnosis: RawDiagnosis;
+  category?: Category | null;
+  note?: string;
+  image: DiagnoseImage;
+}
+
 export interface AIProvider {
   readonly name: string;
   readonly model: string;
   diagnose(input: DiagnoseInput): Promise<RawDiagnosis>;
   generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide>;
+  /** Vérifie une photo de l'utilisateur contre l'étape en cours (réparation interactive). */
+  verifyStep(input: VerifyStepInput): Promise<RawStepCheck>;
 }
 
 export class AIProviderError extends Error {

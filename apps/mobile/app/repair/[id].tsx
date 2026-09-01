@@ -57,5 +57,5 @@ export default function RepairGuideScreen() {
     );
   }
 
-  return <RepairGuideView guide={state.guide} />;
+  return <RepairGuideView guide={state.guide} diagnosisId={String(id)} />;
 }

@@ -2,10 +2,20 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import {
   FREE_MONTHLY_DIAGNOSES,
   type DiagnosisResult,
+  type RepairCheck,
   type RepairGuide,
+  type RepairSession,
+  type RepairSessionStatus,
 } from '@fixit/shared';
 import type { Db } from './client';
-import { appUsers, diagnoses, diagnosisImages, repairGuides, repairHistory } from './schema';
+import {
+  appUsers,
+  diagnoses,
+  diagnosisImages,
+  repairGuides,
+  repairHistory,
+  repairSessions,
+} from './schema';
 
 const PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -204,8 +214,15 @@ export async function deleteDiagnosis(db: Db, userId: string, id: string): Promi
     .from(diagnosisImages)
     .where(eq(diagnosisImages.diagnosisId, id));
 
-  await db.delete(diagnoses).where(eq(diagnoses.id, id)); // cascade images/guide/history
-  return imgs.map((i) => i.r2Key);
+  // Photos ajoutées pendant la réparation interactive (stockées dans checks[].imageId).
+  const [session] = await db
+    .select({ checks: repairSessions.checks })
+    .from(repairSessions)
+    .where(eq(repairSessions.diagnosisId, id));
+  const stepKeys = (session?.checks ?? []).map((ch) => `uploads/${ch.imageId}`);
+
+  await db.delete(diagnoses).where(eq(diagnoses.id, id)); // cascade images/guide/history/session
+  return [...new Set([...imgs.map((i) => i.r2Key), ...stepKeys])];
 }
 
 export async function getRepairGuide(db: Db, diagnosisId: string): Promise<RepairGuide | null> {
@@ -260,6 +277,79 @@ export async function addHistory(
     .update(diagnoses)
     .set({ status, updatedAt: new Date() })
     .where(and(eq(diagnoses.id, diagnosisId), eq(diagnoses.userId, userId)));
+}
+
+/* --------------------------- Réparation interactive --------------------------- */
+
+function rowToSession(row: typeof repairSessions.$inferSelect): RepairSession {
+  return {
+    id: row.id,
+    diagnosisId: row.diagnosisId,
+    status: row.status as RepairSessionStatus,
+    currentStep: row.currentStep,
+    stepCount: row.stepCount,
+    checks: row.checks ?? [],
+    createdAt: new Date(row.createdAt).toISOString(),
+    updatedAt: new Date(row.updatedAt).toISOString(),
+  };
+}
+
+export async function getRepairSession(
+  db: Db,
+  userId: string,
+  diagnosisId: string,
+): Promise<RepairSession | null> {
+  const [row] = await db
+    .select()
+    .from(repairSessions)
+    .where(and(eq(repairSessions.diagnosisId, diagnosisId), eq(repairSessions.userId, userId)));
+  return row ? rowToSession(row) : null;
+}
+
+/** Crée la session si absente, sinon renvoie l'existante (ré-aligne `stepCount`). */
+export async function ensureRepairSession(
+  db: Db,
+  userId: string,
+  diagnosisId: string,
+  stepCount: number,
+): Promise<RepairSession> {
+  const existing = await getRepairSession(db, userId, diagnosisId);
+  if (existing) {
+    if (existing.stepCount !== stepCount) {
+      await db
+        .update(repairSessions)
+        .set({ stepCount, updatedAt: new Date() })
+        .where(eq(repairSessions.id, existing.id));
+      return { ...existing, stepCount };
+    }
+    return existing;
+  }
+  const [row] = await db
+    .insert(repairSessions)
+    .values({ diagnosisId, userId, stepCount, checks: [] })
+    .returning();
+  return rowToSession(row!);
+}
+
+/** Ajoute une vérification et fait avancer la session (autorité serveur). */
+export async function recordRepairCheck(
+  db: Db,
+  sessionId: string,
+  check: RepairCheck,
+  nextStep: number,
+  status: RepairSessionStatus,
+): Promise<RepairSession> {
+  const [row] = await db
+    .update(repairSessions)
+    .set({
+      checks: sql`${repairSessions.checks} || ${JSON.stringify([check])}::jsonb`,
+      currentStep: nextStep,
+      status,
+      updatedAt: new Date(),
+    })
+    .where(eq(repairSessions.id, sessionId))
+    .returning();
+  return rowToSession(row!);
 }
 
 export async function listHistory(

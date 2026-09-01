@@ -108,9 +108,16 @@ Les URLs pré-signées restent possibles plus tard (optim).
 
 ---
 
-## PHASE 8 — INTERACTIVE REPAIR ⏸️ V2
+## PHASE 8 — INTERACTIVE REPAIR ✅ (2026-09-01)
 
-- ⏸️ `repair_sessions`, `AIProvider.verifyStep`, boucle Step → Photo → Vérif IA → Step suivant
+- ✅ **Shared** : `rawStepCheckSchema` (verdict `pass`/`retry`/`unsafe`/`unclear` + `summary` + `advice` + `escalate`), `coerceRawStepCheck` (alias de verdict, escalate auto sur `unsafe`), `repairSessionSchema` / `repairCheckSchema` / `verifyStepRequestSchema`. **+8 tests** (26 → 32 shared).
+- ✅ **AIProvider.verifyStep** : Gemini (vision, `GEMINI_STEP_CHECK_SCHEMA` + `STEP_CHECK_SYSTEM_PROMPT`, conservateur : jamais `pass` sans certitude) · `MockProvider` déterministe (note « spark/smoke… » → `unsafe`, « won't/stuck/wrong… » → `retry`, sinon `pass`).
+- ✅ **DB** : table `repair_sessions` (1 par diagnostic, `unique(diagnosis_id)`, `checks jsonb`, `current_step`, `status`). Migration `0001_repair_sessions` **appliquée à Neon**. `DELETE /diagnoses/:id` purge aussi les photos de session (`checks[].imageId`).
+- ✅ **Routes** (`requireAuth`, filtrées `user_id`) : `POST /diagnoses/:id/repair-session` (démarre/récupère — 409 `guide_required` sans guide, 409 `forced_stop` si danger), `GET …/repair-session`, `POST …/repair-session/verify` (`stepIndex` + `imageId` + `note` → image du stockage → `verifyStep` → check ajouté, `current_step` avancé **seulement** si `pass`, `status: completed` quand toutes les étapes passent). Rate limit `DIAGNOSE_RL`. **+7 tests** d'intégration (20 → 27 api).
+- ✅ **Mobile** : `src/api/repairSession.ts`, `verdictMeta.ts` (pur, testé), `StepCheck` (photo caméra → repli galerie → upload `kind=step` → `verifyStep` → carte verdict colorée + conseils + haptique). Intégré à chaque étape de `RepairGuideView` (`diagnosisId` passé depuis `repair/[id]`). Écran de fin adapté (« Stop here 🛑 » si un `unsafe` a été vu). **+2 tests mobile** (9 → 11).
+- ✅ 70 tests (32 shared + 27 api + 11 mobile) · typecheck + lint verts · bundle iOS OK (2.7 Mo hbc).
+
+**Reste V2+ :** reprise de session persistée côté mobile (le serveur fait déjà autorité), photos de session dans « My Repairs ».
 
 ## PHASE 9 — VIDEO ⏸️ V3
 

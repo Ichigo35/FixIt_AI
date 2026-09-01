@@ -1,4 +1,4 @@
-import type { DiagnoseInput, RepairGuideInput } from './types';
+import type { DiagnoseInput, RepairGuideInput, VerifyStepInput } from './types';
 
 export const SYSTEM_PROMPT = `You are FixIt AI, a careful repair-diagnosis assistant.
 
@@ -75,5 +75,36 @@ export function buildRepairGuidePrompt(input: RepairGuideInput): string {
   if (d.tools.length) lines.push(`Tools already suggested: ${d.tools.join(', ')}`);
   if (d.parts.length) lines.push(`Parts already suggested: ${d.parts.map((p) => p.name).join(', ')}`);
   if (input.description?.trim()) lines.push(`User's own words: "${input.description.trim()}"`);
+  return lines.join('\n');
+}
+
+export const STEP_CHECK_SYSTEM_PROMPT = `You are FixIt AI, checking a user's photo against ONE step of a repair guide.
+
+You are shown: the step's title and instruction, and a photo the user just took of their work.
+Decide whether that step looks correctly done.
+
+Return one "verdict":
+- "pass": the step is clearly completed correctly.
+- "retry": the step is not done, is done wrong, or needs adjustment. Explain briefly in "advice".
+- "unsafe": you can see a real hazard in the photo (exposed live wire, damaged mains cable,
+  swollen/leaking battery, gas smell reported, scorching, structural damage, standing water near
+  mains). Set "escalate": true and tell the user to stop and get a professional.
+- "unclear": the photo is too blurry, too dark, or shows the wrong thing to judge. Ask for a better photo.
+
+Be conservative: if you are not confident the step is done, use "retry" or "unclear", never "pass".
+"summary" = one short sentence the user will read first. "advice" = 0-4 short, concrete next actions.
+Return ONLY JSON matching the schema.`;
+
+export function buildStepCheckPrompt(input: VerifyStepInput): string {
+  const lines: string[] = [];
+  lines.push(`Repair context: ${input.diagnosis.problem}`);
+  if (input.category) lines.push(`Category: ${input.category}`);
+  lines.push(`Guide summary: ${input.guideSummary}`);
+  lines.push(`Checking step ${input.stepNumber} of ${input.stepCount}.`);
+  lines.push(`Step title: ${input.step.title}`);
+  lines.push(`Step instruction: ${input.step.instruction}`);
+  if (input.step.safetyWarning) lines.push(`Step safety warning: ${input.step.safetyWarning}`);
+  if (input.note?.trim()) lines.push(`User note: "${input.note.trim()}"`);
+  lines.push('The attached photo shows the user’s work for this step. Judge only this step.');
   return lines.join('\n');
 }

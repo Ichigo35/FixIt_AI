@@ -4,7 +4,10 @@ import {
   createDiagnosisRequestSchema,
   diagnosisResultSchema,
   historyRequestSchema,
+  verifyStepRequestSchema,
   type DiagnosisResult,
+  type RepairCheck,
+  type RepairSessionStatus,
 } from '@fixit/shared';
 import { requireAuth } from '../auth/middleware';
 import { rateLimit } from '../middleware/rateLimit';
@@ -13,12 +16,15 @@ import {
   addHistory,
   consumeQuota,
   deleteDiagnosis,
+  ensureRepairSession,
   ensureUser,
   getDiagnosis,
   getRepairGuide,
+  getRepairSession,
   insertDiagnosis,
   listDiagnoses,
   listHistory,
+  recordRepairCheck,
   saveRepairGuide,
   type ImageMeta,
 } from '../db/repos';
@@ -222,4 +228,110 @@ diagnoses.get('/:id/repair-guide', rateLimit('DIAGNOSE_RL'), async (c) => {
 
   await saveRepairGuide(db, id, guide, provider.name, provider.model);
   return c.json(guide);
+});
+
+/* --------------------------- Réparation interactive --------------------------- */
+
+/** GET /diagnoses/:id/repair-session — état de la session (404 si aucune). */
+diagnoses.get('/:id/repair-session', async (c) => {
+  const db = getDb(c.env);
+  const userId = c.get('userId');
+  const id = c.req.param('id');
+  const diagnosis = await getDiagnosis(db, userId, id);
+  if (!diagnosis) return c.json({ error: 'not_found' }, 404);
+  const session = await getRepairSession(db, userId, id);
+  if (!session) return c.json({ error: 'not_found' }, 404);
+  return c.json(session);
+});
+
+/** POST /diagnoses/:id/repair-session — démarre (ou récupère) la session interactive. */
+diagnoses.post('/:id/repair-session', async (c) => {
+  const db = getDb(c.env);
+  const userId = c.get('userId');
+  const id = c.req.param('id');
+
+  const diagnosis = await getDiagnosis(db, userId, id);
+  if (!diagnosis) return c.json({ error: 'not_found' }, 404);
+  if (diagnosis.safety.forcedStop) {
+    return c.json({ error: 'session_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
+  }
+  const guide = await getRepairGuide(db, id);
+  if (!guide) return c.json({ error: 'guide_required' }, 409);
+
+  const session = await ensureRepairSession(db, userId, id, guide.steps.length);
+  return c.json(session, 201);
+});
+
+/** POST /diagnoses/:id/repair-session/verify — vérifie une photo contre une étape. */
+diagnoses.post('/:id/repair-session/verify', rateLimit('DIAGNOSE_RL'), async (c) => {
+  const db = getDb(c.env);
+  const userId = c.get('userId');
+  const id = c.req.param('id');
+
+  const diagnosis = await getDiagnosis(db, userId, id);
+  if (!diagnosis) return c.json({ error: 'not_found' }, 404);
+  if (diagnosis.safety.forcedStop) {
+    return c.json({ error: 'session_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
+  }
+
+  const parsed = verifyStepRequestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: 'invalid_request', issues: parsed.error.issues }, 400);
+  }
+  const { stepIndex, imageId, note } = parsed.data;
+
+  const guide = await getRepairGuide(db, id);
+  if (!guide) return c.json({ error: 'guide_required' }, 409);
+  const step = guide.steps[stepIndex];
+  if (!step) return c.json({ error: 'step_out_of_range', stepCount: guide.steps.length }, 400);
+
+  const storage = getStorage(c.env);
+  if (!storage) return c.json({ error: 'storage_unavailable' }, 503);
+  const key = `uploads/${imageId}`;
+  const obj = await storage.get(key);
+  if (!obj) return c.json({ error: 'image_not_found', id: imageId }, 400);
+  if (obj.metadata.userid && obj.metadata.userid !== userId) {
+    return c.json({ error: 'forbidden' }, 403);
+  }
+
+  const session = await ensureRepairSession(db, userId, id, guide.steps.length);
+
+  const provider = getAIProvider(c.env);
+  let raw;
+  try {
+    raw = await provider.verifyStep({
+      step,
+      stepNumber: stepIndex + 1,
+      stepCount: guide.steps.length,
+      guideSummary: guide.summary,
+      diagnosis: diagnosis.diagnosis,
+      category: diagnosis.category,
+      note,
+      image: { contentType: obj.contentType || 'image/jpeg', data: obj.data },
+    });
+  } catch (err) {
+    if (err instanceof AIProviderError) {
+      return c.json(
+        { error: err.code, message: err.message },
+        err.code === 'ai_request_failed' ? 502 : 422,
+      );
+    }
+    throw err;
+  }
+
+  const check: RepairCheck = {
+    stepIndex,
+    imageId,
+    verdict: raw.verdict,
+    summary: raw.summary,
+    advice: raw.advice,
+    escalate: raw.escalate,
+    createdAt: new Date().toISOString(),
+  };
+
+  const advanced = raw.verdict === 'pass' ? Math.max(session.currentStep, stepIndex + 1) : session.currentStep;
+  const status: RepairSessionStatus = advanced >= guide.steps.length ? 'completed' : 'active';
+  const updated = await recordRepairCheck(db, session.id, check, advanced, status);
+
+  return c.json({ check, session: updated }, 201);
 });

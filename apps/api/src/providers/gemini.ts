@@ -1,15 +1,20 @@
 import {
   coerceRawDiagnosis,
+  coerceRawStepCheck,
   coerceRepairGuide,
   type RawDiagnosis,
+  type RawStepCheck,
   type RepairGuide,
 } from '@fixit/shared';
 import { GEMINI_REPAIR_SCHEMA } from './geminiRepairSchema';
 import { GEMINI_RESPONSE_SCHEMA } from './geminiSchema';
+import { GEMINI_STEP_CHECK_SCHEMA } from './geminiStepSchema';
 import {
   buildRepairGuidePrompt,
+  buildStepCheckPrompt,
   buildUserPrompt,
   REPAIR_SYSTEM_PROMPT,
+  STEP_CHECK_SYSTEM_PROMPT,
   SYSTEM_PROMPT,
 } from './prompt';
 import {
@@ -17,6 +22,7 @@ import {
   type AIProvider,
   type DiagnoseInput,
   type RepairGuideInput,
+  type VerifyStepInput,
 } from './types';
 
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -60,6 +66,19 @@ export class GeminiProvider implements AIProvider {
   async generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide> {
     const parts: GeminiPart[] = [{ text: buildRepairGuidePrompt(input) }];
     return this.structured(REPAIR_SYSTEM_PROMPT, GEMINI_REPAIR_SCHEMA, parts, coerceRepairGuide);
+  }
+
+  async verifyStep(input: VerifyStepInput): Promise<RawStepCheck> {
+    const parts: GeminiPart[] = [
+      { text: buildStepCheckPrompt(input) },
+      { inline_data: { mime_type: input.image.contentType, data: toBase64(input.image.data) } },
+    ];
+    return this.structured(
+      STEP_CHECK_SYSTEM_PROMPT,
+      GEMINI_STEP_CHECK_SCHEMA,
+      parts,
+      coerceRawStepCheck,
+    );
   }
 
   /** Appel avec sortie JSON contrainte + 1 tentative de réparation. */

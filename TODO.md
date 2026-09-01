@@ -127,7 +127,23 @@ Les URLs pré-signées restent possibles plus tard (optim).
 - ✅ **Perfs** : `history` passé en `FlatList` + ligne `memo`, `getMe`/`listDiagnoses` avec garde `alive` (plus de setState après démontage), `headerBackButtonDisplayMode: 'minimal'`.
 - ✅ **Tests mobile** (nouveau) : Vitest sur les modules purs — `friendlyError`/`isRetryable` + `statusMeta`/`relativeTime`. **9 tests**. Total monorepo = **52** (26 shared + 17 api + 9 mobile).
 
-**Reste (V2 polish) :** skeletons de liste, haptique, `react-native-reanimated` pour transitions d'écran, empty states illustrés, gestion hors-ligne fine, i18n.
+### PHASE 10 — 2e passe ✅ (2026-09-01)
+
+- ✅ **Haptique** (`expo-haptics`, `src/lib/haptics.ts`) : obturateur caméra (impact), STOP (warning), diagnostic prêt (success) / erreur (error), Start Repair (impact), navigation guide + fin (success), feedback 👍 (success) / 👎 (tap). Silencieux sur web.
+- ✅ **Skeletons** (`src/components/Skeleton.tsx`, Animated natif) : `My Repairs` affiche des cartes fantômes au lieu d'un spinner.
+- ✅ **Pull-to-refresh** sur `My Repairs` (`RefreshControl`).
+- ✅ **Hors-ligne** : `ConnectivityProvider` (`src/lib/connectivity.tsx`) branché sur `netBridge` du client API (2 échecs consécutifs → offline, 1 succès → online) + `OfflineBanner` animé dans `_layout`.
+- Bundle iOS OK (1189 modules). 55 tests.
+
+**Reste (3e passe éventuelle) :** `react-native-reanimated` (transitions d'écran), empty states illustrés, i18n, file d'attente de retry hors-ligne.
+
+## Sécurité — durcissement ✅ (2026-09-01)
+
+- ✅ **En-têtes** (`secureHeaders`) : CSP `default-src 'none'`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, HSTS, COOP/CORP. Vérifiés en prod.
+- ✅ **Plafond de corps** (`bodyLimit`) : `/uploads` ≤ 10 Mio, `/diagnoses*` JSON ≤ 64 Kio → `413 payload_too_large`.
+- ✅ **Rate limiting** : primitive Cloudflare `[[ratelimits]]` — `DIAGNOSE_RL` 8/min/user (POST /diagnoses + repair-guide), `UPLOAD_RL` 40/min/user (POST /uploads). Clé = userId (fallback IP). `429 rate_limited`. Couche grossière (best-effort) ; le quota exact reste `consumeQuota` (3/user).
+- ❌ **RLS Postgres** : non faisable ici — `drizzle-orm/neon-http` n'a **aucun support de transaction** (impossible de poser un GUC de session par requête) et **tous les rôles Neon ont `BYPASSRLS`** (non retirable par `neondb_owner`). Le filtrage `WHERE user_id =` côté Worker + tests d'isolation restent la frontière (cf. `ARCHITECTURE.md`).
+- ❌ **Rôle Postgres restreint** : sans intérêt sur Neon — tout rôle a `CREATEDB`/`CREATEROLE`/`BYPASSRLS`, aucun gradient de privilège. L'isolation Neon est au niveau projet/branche.
 
 ---
 

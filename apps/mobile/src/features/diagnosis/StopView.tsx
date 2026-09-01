@@ -1,12 +1,18 @@
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import type { DiagnosisResult } from '@fixit/shared';
 import { Button, Card, Text } from '@/components';
+import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
 export function StopView({ result }: { result: DiagnosisResult }) {
   const theme = useTheme();
   const router = useRouter();
+
+  useEffect(() => {
+    haptics.warning();
+  }, []);
 
   return (
     <View style={{ gap: theme.spacing.lg }}>

@@ -1,10 +1,11 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { memo, useCallback, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { listDiagnoses, type DiagnosisListItem } from '@/api/diagnoses';
-import { Card, EmptyState, ErrorState, LoadingState, Screen, Text } from '@/components';
+import { Card, EmptyState, ErrorState, Screen, SkeletonList, Text } from '@/components';
 import { relativeTime, statusMeta } from '@/features/history/statusMeta';
 import { friendlyError } from '@/lib/errors';
+import { haptics } from '@/lib/haptics';
 import { useTheme, type Theme } from '@/theme';
 
 type State =
@@ -58,12 +59,15 @@ export default function HistoryScreen() {
   const theme = useTheme();
   const router = useRouter();
   const [state, setState] = useState<State>({ phase: 'loading' });
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(() => {
-    setState({ phase: 'loading' });
+  const load = useCallback((mode: 'initial' | 'refresh' = 'initial') => {
+    if (mode === 'initial') setState({ phase: 'loading' });
+    else setRefreshing(true);
     void listDiagnoses()
       .then((items) => setState({ phase: 'done', items }))
-      .catch((err) => setState({ phase: 'error', message: friendlyError(err, 'list') }));
+      .catch((err) => setState({ phase: 'error', message: friendlyError(err, 'list') }))
+      .finally(() => setRefreshing(false));
   }, []);
 
   useFocusEffect(
@@ -73,14 +77,20 @@ export default function HistoryScreen() {
   );
 
   const openItem = useCallback(
-    (id: string) => router.push({ pathname: '/diagnosis/[id]', params: { id } }),
+    (id: string) => {
+      haptics.tap();
+      router.push({ pathname: '/diagnosis/[id]', params: { id } });
+    },
     [router],
   );
 
   if (state.phase === 'loading') {
     return (
       <Screen>
-        <LoadingState />
+        <Text variant="title" style={{ marginBottom: theme.spacing.xs }}>
+          My Repairs
+        </Text>
+        <SkeletonList rows={5} />
       </Screen>
     );
   }
@@ -119,6 +129,13 @@ export default function HistoryScreen() {
         }
         renderItem={({ item }) => <HistoryRow item={item} theme={theme} onPress={openItem} />}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => load('refresh')}
+            tintColor={theme.colors.textMuted}
+          />
+        }
       />
     </Screen>
   );

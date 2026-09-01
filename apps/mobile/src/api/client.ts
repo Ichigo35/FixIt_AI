@@ -14,6 +14,9 @@ export const authBridge: {
   onSignedOut: () => undefined,
 };
 
+/** Pont vers la connectivité : renseigné par ConnectivityProvider. */
+export const netBridge: { report: (online: boolean) => void } = { report: () => undefined };
+
 type Body = string | ArrayBuffer | Blob | undefined;
 
 async function request(path: string, method: string, contentType: string, body: Body): Promise<Response> {
@@ -28,7 +31,14 @@ async function request(path: string, method: string, contentType: string, body: 
       body,
     });
 
-  let res = await send(authBridge.getAccessToken());
+  let res: Response;
+  try {
+    res = await send(authBridge.getAccessToken());
+  } catch (err) {
+    netBridge.report(false);
+    throw err;
+  }
+  netBridge.report(true);
   if (res.status === 401) {
     const fresh = await authBridge.refresh();
     if (fresh) {

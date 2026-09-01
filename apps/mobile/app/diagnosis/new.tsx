@@ -6,6 +6,7 @@ import { ErrorState, LoadingState, Screen } from '@/components';
 import { DiagnosisResultView } from '@/features/diagnosis/DiagnosisResultView';
 import { StopView } from '@/features/diagnosis/StopView';
 import { friendlyError, isRetryable } from '@/lib/errors';
+import { haptics } from '@/lib/haptics';
 
 type State =
   | { phase: 'loading' }
@@ -39,8 +40,11 @@ export default function NewDiagnosisScreen() {
         category: (params.category as Category | undefined) ?? null,
         imageIds: parseIds(params.imageIds),
       });
+      // Le retour haptique du STOP est géré par StopView.
+      if (!result.safety.forcedStop) haptics.success();
       setState({ phase: 'done', result });
     } catch (err) {
+      haptics.error();
       setState({
         phase: 'error',
         message: friendlyError(err, 'diagnosis'),

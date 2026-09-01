@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import type { Part, RepairGuide } from '@fixit/shared';
 import { Button, Card, DifficultyBadge, FadeInView, Screen, Text } from '@/components';
+import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
 function priceLabel(p: Part): string {
@@ -32,6 +33,16 @@ export function RepairGuideView({ guide }: { guide: RepairGuide }) {
   const router = useRouter();
   // -1 = overview, 0..n-1 = steps, n = done
   const [pos, setPos] = useState(-1);
+  const done = pos >= guide.steps.length;
+
+  useEffect(() => {
+    if (done) haptics.success();
+  }, [done]);
+
+  const go = (next: number) => {
+    haptics.tap();
+    setPos(next);
+  };
 
   if (pos === -1) {
     return (
@@ -83,13 +94,13 @@ export function RepairGuideView({ guide }: { guide: RepairGuide }) {
         ) : null}
         <List title="OPTIONAL" items={guide.optional} />
 
-        <Button label="Start repair" icon="🛠️" onPress={() => setPos(0)} />
+        <Button label="Start repair" icon="🛠️" onPress={() => go(0)} />
         <Button label="Back" variant="ghost" onPress={() => router.back()} />
       </Screen>
     );
   }
 
-  if (pos >= guide.steps.length) {
+  if (done) {
     return (
       <Screen>
         <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.lg }}>
@@ -144,11 +155,11 @@ export function RepairGuideView({ guide }: { guide: RepairGuide }) {
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         {pos > 0 ? (
-          <Button label="Back" variant="secondary" fullWidth={false} onPress={() => setPos(pos - 1)} />
+          <Button label="Back" variant="secondary" fullWidth={false} onPress={() => go(pos - 1)} />
         ) : null}
         <Button
           label={pos === guide.steps.length - 1 ? 'Finish' : 'Continue'}
-          onPress={() => setPos(pos + 1)}
+          onPress={() => go(pos + 1)}
           style={{ flex: 1 }}
         />
       </View>

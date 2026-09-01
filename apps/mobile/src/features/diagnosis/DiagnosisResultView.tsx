@@ -10,6 +10,7 @@ import {
   RiskBadge,
   Text,
 } from '@/components';
+import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 import { RepairabilityMeter } from './RepairabilityMeter';
 
@@ -121,7 +122,10 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
         label={isPro ? 'Repair guide not recommended' : 'Start Repair'}
         icon={isPro ? '⚠️' : '🛠️'}
         disabled={isPro}
-        onPress={() => router.push({ pathname: '/repair/[id]', params: { id: result.id } })}
+        onPress={() => {
+          haptics.impact();
+          router.push({ pathname: '/repair/[id]', params: { id: result.id } });
+        }}
       />
       <Button label="Back to home" variant="ghost" onPress={() => router.replace('/')} />
     </View>

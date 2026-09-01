@@ -6,6 +6,7 @@ import type { DiagnosisDetail, HistoryEntry } from '@/api/diagnoses';
 import { submitHistory } from '@/api/diagnoses';
 import { imageSourceFromKey, uploadImage } from '@/api/uploads';
 import { Button, Card, Text } from '@/components';
+import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
 export function OutcomeSection({
@@ -29,8 +30,11 @@ export function OutcomeSection({
     setError(null);
     try {
       const { history } = await submitHistory(detail.id, input);
+      if (input.outcome === 'fixed') haptics.success();
+      else haptics.tap();
       onUpdated(history);
     } catch {
+      haptics.error();
       setError('Could not save. Try again.');
     } finally {
       setBusy(false);

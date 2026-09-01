@@ -2,6 +2,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { Button, Text } from '@/components';
+import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
 export function CameraCapture({ onCaptured }: { onCaptured: (uri: string) => void }) {
@@ -30,6 +31,7 @@ export function CameraCapture({ onCaptured }: { onCaptured: (uri: string) => voi
   }
 
   const take = async () => {
+    haptics.impact();
     const photo = await cameraRef.current?.takePictureAsync({ quality: 0.7 });
     if (photo?.uri) onCaptured(photo.uri);
   };

@@ -3,7 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
-import { ErrorBoundary, LoadingState } from '@/components';
+import { ErrorBoundary, LoadingState, OfflineBanner } from '@/components';
+import { ConnectivityProvider } from '@/lib/connectivity';
 import { OnboardingProvider, useOnboarding } from '@/lib/onboarding';
 import { ThemeProvider, useTheme } from '@/theme';
 
@@ -58,6 +59,7 @@ function RootStack() {
         <Stack.Screen name="diagnosis/[id]" options={{ title: 'Diagnosis' }} />
         <Stack.Screen name="repair/[id]" options={{ title: 'Repair guide' }} />
       </Stack>
+      <OfflineBanner />
     </>
   );
 }
@@ -67,11 +69,13 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <ErrorBoundary>
-          <OnboardingProvider>
-            <AuthProvider>
-              <RootStack />
-            </AuthProvider>
-          </OnboardingProvider>
+          <ConnectivityProvider>
+            <OnboardingProvider>
+              <AuthProvider>
+                <RootStack />
+              </AuthProvider>
+            </OnboardingProvider>
+          </ConnectivityProvider>
         </ErrorBoundary>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -35,8 +35,10 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 | 9 — Video | ⏳ V3 |
 | 10 — Polish | ✅ 1re passe : erreurs centralisées (`lib/errors.ts`), `LoadingState`/`ErrorState`/`EmptyState`, `ErrorBoundary`, onboarding (3 écrans + `OnboardingProvider`), animations `Animated` natives (`FadeInView`, meter, press), a11y, `history` en FlatList, **9 tests mobile (Vitest)**. Push OK |
 | CI | ✅ `.github/workflows/ci.yml` (lint + typecheck + tests sur push/PR `main`), secret `DATABASE_URL` posé, run vert |
-| Storage swap | ✅ R2 → **Neon Object Storage** (S3, `aws4fetch`), abstraction `src/storage/`, 53 tests. Push OK |
+| Storage swap | ✅ R2 → **Neon Object Storage** (S3, `aws4fetch`), abstraction `src/storage/`. Push OK |
 | Déploiement | ✅ **Worker prod live** : `https://fixit-ai-api.ichigo35.workers.dev` — `APP_ENV=production`, 4 secrets posés, `/health` OK, E2E authentifié (upload/get/403/delete) vérifié en prod |
+| Sécurité | ✅ `secureHeaders` + `bodyLimit` + rate limiting Cloudflare (`[[ratelimits]]`). RLS Postgres écarté (driver neon-http sans transaction + rôles Neon `BYPASSRLS`) — filtrage Worker = frontière. |
+| Polish 2e passe | ✅ `expo-haptics`, skeletons (`My Repairs`), pull-to-refresh, `OfflineBanner` + `ConnectivityProvider`. 55 tests. |
 
 ## Infra provisionnée
 

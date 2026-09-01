@@ -1,6 +1,13 @@
 packages:
   - apps/*
   - packages/*
+
+# React Native / Expo ne supportent pas le node_modules symlinké de pnpm.
+# Depuis pnpm 10/11, ces réglages vivent ici (plus dans .npmrc, qui est ignoré).
+# https://docs.expo.dev/guides/monorepos/
+nodeLinker: hoisted
+shamefullyHoist: true
+
 allowBuilds:
   esbuild: true
   workerd: true

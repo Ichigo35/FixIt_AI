@@ -7,6 +7,7 @@ import {
   type UploadContentType,
 } from '@fixit/shared';
 import { requireAuth } from '../auth/middleware';
+import { rateLimit } from '../middleware/rateLimit';
 import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
 
@@ -22,7 +23,7 @@ export const uploads = new Hono<AppEnv>();
 uploads.use('*', requireAuth);
 
 /** POST /uploads — corps = octets bruts, header Content-Type requis. Relais vers le stockage objet. */
-uploads.post('/', async (c) => {
+uploads.post('/', rateLimit('UPLOAD_RL'), async (c) => {
   const contentType = (c.req.header('content-type') ?? '').split(';')[0]?.trim() ?? '';
   if (!CONTENT_TYPES.has(contentType)) {
     return c.json({ error: 'unsupported_media_type', allowed: [...CONTENT_TYPES] }, 415);

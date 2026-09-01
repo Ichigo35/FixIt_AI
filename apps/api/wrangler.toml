@@ -23,6 +23,17 @@ S3_ENDPOINT = "https://br-rough-feather-a5r1cdyr.storage.c-1.us-east-2.aws.neon.
 S3_REGION = "us-east-2"
 S3_BUCKET = "fixit-ai-images"
 
+# Rate limiting (primitive native Cloudflare, aucun provisionnement).
+[[ratelimits]]
+name = "DIAGNOSE_RL"
+namespace_id = "1001"
+simple = { limit = 8, period = 60 }
+
+[[ratelimits]]
+name = "UPLOAD_RL"
+namespace_id = "1002"
+simple = { limit = 40, period = 60 }
+
 # Secrets attendus (déclarés ici pour mémoire, valeurs jamais committées) :
 #   GEMINI_API_KEY        -> wrangler secret put GEMINI_API_KEY
 #   DATABASE_URL          -> wrangler secret put DATABASE_URL        (chaîne de connexion Neon)

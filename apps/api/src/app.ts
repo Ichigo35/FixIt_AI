@@ -1,5 +1,8 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
+import { secureHeaders } from 'hono/secure-headers';
+import { MAX_UPLOAD_BYTES } from '@fixit/shared';
 import { requireAuth } from './auth/middleware';
 import { getDb } from './db/client';
 import { ensureUser, getQuota } from './db/repos';
@@ -11,7 +14,28 @@ import type { AppEnv } from './types';
 export function createApp() {
   const app = new Hono<AppEnv>();
 
+  // En-têtes de sécurité. C'est une API JSON (aucun HTML) → CSP verrouillée + pas de sniff/embed.
+  app.use(
+    '*',
+    secureHeaders({
+      contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      xFrameOptions: 'DENY',
+      xContentTypeOptions: 'nosniff',
+      referrerPolicy: 'no-referrer',
+      crossOriginResourcePolicy: 'same-origin',
+      strictTransportSecurity: 'max-age=15552000; includeSubDomains',
+      xPermittedCrossDomainPolicies: 'none',
+    }),
+  );
+
   app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
+
+  // Plafond de taille du corps (défense mémoire) : images ≤ MAX_UPLOAD_BYTES, JSON ≤ 64 Kio.
+  const tooLarge = (c: Context) =>
+    c.json({ error: 'payload_too_large', maxBytes: MAX_UPLOAD_BYTES }, 413);
+  app.use('/uploads', bodyLimit({ maxSize: MAX_UPLOAD_BYTES, onError: tooLarge }));
+  app.use('/diagnoses', bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
+  app.use('/diagnoses/*', bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
 
   app.get('/', (c) => c.json({ name: 'FixIt AI API', status: 'ok' }));
 

@@ -25,4 +25,8 @@ export interface Env {
 
   /** Stockage injecté par les tests (jamais défini en production). */
   STORAGE?: ObjectStorage;
+
+  // Rate limiting (primitive native Cloudflare ; absent en local/tests -> pas de limite).
+  DIAGNOSE_RL?: RateLimit;
+  UPLOAD_RL?: RateLimit;
 }

@@ -7,6 +7,7 @@ import {
   type DiagnosisResult,
 } from '@fixit/shared';
 import { requireAuth } from '../auth/middleware';
+import { rateLimit } from '../middleware/rateLimit';
 import { getDb } from '../db/client';
 import {
   addHistory,
@@ -30,7 +31,7 @@ export const diagnoses = new Hono<AppEnv>();
 diagnoses.use('*', requireAuth);
 
 /** POST /diagnoses — pipeline complet + quota + persistance Neon. */
-diagnoses.post('/', async (c) => {
+diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
   const json = await c.req.json().catch(() => null);
   const parsed = createDiagnosisRequestSchema.safeParse(json);
   if (!parsed.success) {
@@ -185,7 +186,7 @@ diagnoses.delete('/:id', async (c) => {
 });
 
 /** GET /diagnoses/:id/repair-guide — génère (et met en cache) le guide pas-à-pas. */
-diagnoses.get('/:id/repair-guide', async (c) => {
+diagnoses.get('/:id/repair-guide', rateLimit('DIAGNOSE_RL'), async (c) => {
   const db = getDb(c.env);
   const userId = c.get('userId');
   const id = c.req.param('id');

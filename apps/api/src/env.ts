@@ -5,10 +5,14 @@ export interface Env {
   FREE_MONTHLY_DIAGNOSES: string;
   GEMINI_MODEL: string;
 
-  // secrets (via `wrangler secret put` / .dev.vars) — optionnels tant que PHASE 4/6 pas faites
+  // secrets (via `wrangler secret put` / .dev.vars)
   GEMINI_API_KEY?: string;
   DATABASE_URL?: string;
-  AUTH_JWT_SECRET?: string;
+
+  // Neon Auth (Stack) — publishable, pas secret, mais regroupé ici
+  STACK_PROJECT_ID?: string;
+  STACK_JWKS_URL?: string;
+  STACK_PUBLISHABLE_KEY?: string;
 
   // bindings
   IMAGES?: R2Bucket;

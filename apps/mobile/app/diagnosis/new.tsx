@@ -48,9 +48,11 @@ export default function NewDiagnosisScreen() {
         err instanceof ApiError
           ? err.code === 'ai_request_failed'
             ? 'The AI service is unavailable right now. Please try again in a moment.'
-            : err.code === 'need_photo_or_description'
-              ? 'Add a photo or a description first.'
-              : `Something went wrong (${err.code}).`
+            : err.code === 'quota_exceeded'
+              ? "You've used all your free diagnoses this month. Upgrade to Premium for unlimited."
+              : err.code === 'need_photo_or_description'
+                ? 'Add a photo or a description first.'
+                : `Something went wrong (${err.code}).`
           : 'Network error. Check your connection and that the API is running.';
       setState({ phase: 'error', message });
     }

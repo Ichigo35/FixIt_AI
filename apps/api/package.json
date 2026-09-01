@@ -12,11 +12,15 @@
   },
   "dependencies": {
     "@fixit/shared": "workspace:*",
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.6.15",
+    "jose": "^6.2.10",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",
+    "drizzle-kit": "^0.31.10",
     "vitest": "^2.1.8",
     "wrangler": "^4.127.1"
   }

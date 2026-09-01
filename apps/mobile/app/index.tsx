@@ -1,5 +1,8 @@
-import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { getMe, type Me } from '@/api/me';
+import { useAuth } from '@/auth/AuthProvider';
 import { Card, Screen, Text } from '@/components';
 import { useTheme } from '@/theme';
 
@@ -44,6 +47,16 @@ const ACTIONS: Action[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { signOut } = useAuth();
+  const [me, setMe] = useState<Me | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      getMe()
+        .then(setMe)
+        .catch(() => setMe(null));
+    }, []),
+  );
 
   return (
     <Screen scroll>
@@ -53,6 +66,28 @@ export default function HomeScreen() {
           What&apos;s wrong? Let&apos;s figure it out.
         </Text>
       </View>
+
+      {me ? (
+        <Card>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View>
+              <Text variant="caption" muted>
+                {me.email ?? 'Signed in'}
+              </Text>
+              <Text variant="bodyStrong">
+                {me.plan === 'premium'
+                  ? 'Premium · unlimited'
+                  : `${Math.max(0, me.quota.limit - me.quota.used)} of ${me.quota.limit} diagnoses left`}
+              </Text>
+            </View>
+            <Pressable onPress={signOut} hitSlop={8}>
+              <Text variant="caption" color={theme.colors.primary}>
+                Sign out
+              </Text>
+            </Pressable>
+          </View>
+        </Card>
+      ) : null}
 
       <View style={{ gap: theme.spacing.md }}>
         {ACTIONS.map((action) => (

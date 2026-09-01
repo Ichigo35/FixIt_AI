@@ -28,16 +28,19 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 | 2 — Foundation | ✅ monorepo pnpm, shared+api+mobile, push OK |
 | 3 — Camera | ✅ expo-camera + image-picker + `POST /uploads` → R2, push OK |
 | 4 — Diagnosis | ✅ AIProvider/Gemini + `POST /diagnoses` + safety repensé + écran résultat + STOP, push OK |
-| 5 — Repair guide | ✅ `GET /diagnoses/:id/repair-guide` + `RepairGuideView` pas-à-pas + ⚠ SAFETY, 41 tests, push OK |
-| 6 — Neon + Auth + Storage | ⏳ prochaine (migrations Drizzle, Neon Auth, RLS, quota FREE 3/mois, `wrangler login` + bucket R2) |
-| 7–10 | ⏳ voir `TODO.md` |
+| 5 — Repair guide | ✅ `GET /diagnoses/:id/repair-guide` + `RepairGuideView` pas-à-pas, push OK |
+| 6 — Neon + Auth + Storage | ✅ Neon Auth (Stack), Drizzle (5 tables), persistance Postgres, quota FREE 3/30j, auth mobile, 41 tests, push OK |
+| 7 — History | ⏳ prochaine (`My Repairs`, détail rouvrable, avant/après, feedback 👍/👎) |
+| 8–10 | ⏳ voir `TODO.md` |
 
 ## Infra provisionnée
 
-- **Neon** : projet `fixit-ai` = `winter-union-90877282` (org `org-sweet-tooth-50877405`, aws-us-east-2, PG 17). `DATABASE_URL` dans `apps/api/.dev.vars`. Aucune table encore (migrations en PHASE 6).
+- **Neon** : projet `fixit-ai` = `winter-union-90877282` (org `org-sweet-tooth-50877405`, aws-us-east-2, PG 17). `DATABASE_URL` dans `apps/api/.dev.vars`. Branche `br-rough-feather-a5r1cdyr`. Tables : `app_users`, `diagnoses`, `diagnosis_images`, `repair_guides`, `repair_history` + `neon_auth.users_sync`. Migrations Drizzle dans `apps/api/drizzle/`.
+- **Neon Auth (Stack)** : projet Stack `3432abc2-2b77-4b7b-acff-0686a7b99697`. `STACK_PROJECT_ID` / `STACK_JWKS_URL` / `STACK_PUBLISHABLE_KEY` dans `wrangler.toml [vars]` (publics) et `apps/mobile/app.config.ts extra`. Email/password activé, pas d'OAuth mobile encore. Worker vérifie le JWT via JWKS (`jose`).
 - **Gemini** : clé dans `apps/api/.dev.vars` (`GEMINI_API_KEY`), modèle **`gemini-3.6-flash`** (`gemini-2.5-flash` retiré par Google). Appel REST `generateContent` + `responseSchema`. Sans clé → `MockProvider`.
-- **Cloudflare / R2** : binding `IMAGES` (bucket `fixit-ai-images`) déclaré dans `wrangler.toml`. `wrangler dev` simule R2 en local (OK). Avant déploiement : `wrangler login` puis `wrangler r2 bucket create fixit-ai-images`.
+- **Cloudflare / R2** : binding `IMAGES` (bucket `fixit-ai-images`). `wrangler dev` simule R2 en local. Avant déploiement : `wrangler login`, `wrangler r2 bucket create fixit-ai-images`, `wrangler secret put GEMINI_API_KEY DATABASE_URL`.
 - **Domaine / DNS / hébergement : Cloudflare uniquement — jamais Vercel.**
+- Tests API = **intégration contre Neon réel** (lisent `apps/api/.dev.vars`, `describe.runIf(hasDb)`, users `test-*` nettoyés en `afterAll`).
 
 ## Commandes
 

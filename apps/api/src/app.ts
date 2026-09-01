@@ -1,11 +1,14 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import type { Env } from './env';
+import { requireAuth } from './auth/middleware';
+import { getDb } from './db/client';
+import { ensureUser, getQuota } from './db/repos';
 import { diagnoses } from './routes/diagnoses';
 import { uploads } from './routes/uploads';
+import type { AppEnv } from './types';
 
 export function createApp() {
-  const app = new Hono<{ Bindings: Env }>();
+  const app = new Hono<AppEnv>();
 
   app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
 
@@ -20,9 +23,24 @@ export function createApp() {
         gemini: Boolean(c.env.GEMINI_API_KEY),
         database: Boolean(c.env.DATABASE_URL),
         storage: Boolean(c.env.IMAGES),
+        auth: Boolean(c.env.STACK_JWKS_URL),
       },
     }),
   );
+
+  // Profil + quota de l'utilisateur courant.
+  app.get('/me', requireAuth, async (c) => {
+    const db = getDb(c.env);
+    const userId = c.get('userId');
+    await ensureUser(db, userId, c.get('userEmail'));
+    const quota = await getQuota(db, userId);
+    return c.json({
+      id: userId,
+      email: c.get('userEmail'),
+      plan: quota.plan,
+      quota: { used: quota.used, limit: quota.limit },
+    });
+  });
 
   app.route('/uploads', uploads);
   app.route('/diagnoses', diagnoses);

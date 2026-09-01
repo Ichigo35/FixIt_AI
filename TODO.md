@@ -79,14 +79,19 @@ Les URLs pré-signées restent possibles plus tard (optim).
 
 ---
 
-## PHASE 6 — NEON + AUTH + STORAGE ⏳
+## PHASE 6 — NEON + AUTH + STORAGE ✅
 
-- ⏳ Projet Neon + Drizzle schema + migrations
-- ⏳ Auth (Neon Auth — à confirmer), `POST /auth/session`, JWT
-- ⏳ Isolation par `user_id` + policies RLS en défense en profondeur
-- ⏳ R2 bucket + suppression images sur `DELETE /diagnoses/:id`
-- ⏳ Quota FREE 3/mois
-- ⏳ Tests isolation / quota / auth
+- ✅ **Neon Auth (Stack)** provisionné sur `winter-union-90877282` (projet Stack `3432abc2-…`, `neon_auth.users_sync`)
+- ✅ **Drizzle** schema + migration `0000_init` appliquée à Neon : `app_users`, `diagnoses`, `diagnosis_images`, `repair_guides`, `repair_history`
+- ✅ Worker : middleware `requireAuth` (vérif JWT Stack via **JWKS + jose**, `iss`/`aud`) + bypass dev `x-dev-user-id`
+- ✅ `src/db/` (client `@neondatabase/serverless` + drizzle, `repos.ts`) — **persistance migrée de R2-JSON vers Postgres** (images toujours dans R2)
+- ✅ `GET /me` (profil + quota) · toutes les routes `/uploads` et `/diagnoses` exigent l'auth, **filtrées par `user_id`**
+- ✅ **Quota FREE 3 / 30 j** (`consumeQuota`, 429 `quota_exceeded`) ; premium = illimité
+- ✅ `DELETE /diagnoses/:id` : cascade Postgres + purge des objets R2
+- ✅ Mobile : `stackClient` (REST Stack : sign-up / sign-in / refresh), **`AuthProvider`** (expo-secure-store, refresh auto sur 401), portail d'auth dans `_layout`, écran `auth` (sign in / sign up), bandeau compte + quota + « Sign out » sur l'accueil
+- ✅ **41 tests** (26 shared + 15 api **d'intégration contre Neon réel** : quota, isolation, auth 401, persistance, guide). Flux JWT Stack vérifié end-to-end via `wrangler dev`.
+
+**Reste (config, non bloquant pour le dev) :** OAuth Google/GitHub côté mobile (redirections + config dashboard Stack) ; policies RLS Postgres (le filtrage Worker est la frontière de sécurité, cf. `ARCHITECTURE.md`) ; `wrangler login` + `wrangler r2 bucket create fixit-ai-images` + `wrangler secret put GEMINI_API_KEY DATABASE_URL` avant déploiement.
 
 ---
 

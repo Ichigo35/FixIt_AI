@@ -12,6 +12,10 @@ port = 8788
 APP_ENV = "development"
 FREE_MONTHLY_DIAGNOSES = "3"
 GEMINI_MODEL = "gemini-3.6-flash"
+# Neon Auth (Stack) — publishable, non secret
+STACK_PROJECT_ID = "3432abc2-2b77-4b7b-acff-0686a7b99697"
+STACK_JWKS_URL = "https://api.stack-auth.com/api/v1/projects/3432abc2-2b77-4b7b-acff-0686a7b99697/.well-known/jwks.json"
+STACK_PUBLISHABLE_KEY = "pck_marynb4bzhy8q7heg7r3j467011pjcmfa29f6hvzcqx90"
 
 # Bucket R2 pour les images.
 # `wrangler dev` simule R2 en local (aucun compte requis).
@@ -21,6 +25,5 @@ binding = "IMAGES"
 bucket_name = "fixit-ai-images"
 
 # Secrets attendus (déclarés ici pour mémoire, valeurs jamais committées) :
-#   GEMINI_API_KEY
-#   DATABASE_URL
-#   AUTH_JWT_SECRET
+#   GEMINI_API_KEY   -> wrangler secret put GEMINI_API_KEY
+#   DATABASE_URL     -> wrangler secret put DATABASE_URL   (chaîne de connexion Neon)

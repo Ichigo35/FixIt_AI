@@ -49,6 +49,7 @@ const config: ExpoConfig = {
         photosPermission: 'FixIt AI needs access to your photos so you can pick a picture of the problem.',
       },
     ],
+    'expo-secure-store',
   ],
   experiments: {
     typedRoutes: true,
@@ -56,6 +57,11 @@ const config: ExpoConfig = {
   extra: {
     apiBaseUrl: API_BASE_URL,
     appEnv: process.env.EXPO_PUBLIC_APP_ENV ?? 'development',
+    stackProjectId:
+      process.env.EXPO_PUBLIC_STACK_PROJECT_ID ?? '3432abc2-2b77-4b7b-acff-0686a7b99697',
+    stackPublishableKey:
+      process.env.EXPO_PUBLIC_STACK_PUBLISHABLE_KEY ??
+      'pck_marynb4bzhy8q7heg7r3j467011pjcmfa29f6hvzcqx90',
   },
 };
 

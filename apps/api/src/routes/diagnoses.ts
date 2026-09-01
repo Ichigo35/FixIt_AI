@@ -5,20 +5,27 @@ import {
   diagnosisResultSchema,
   type DiagnosisResult,
 } from '@fixit/shared';
-import type { Env } from '../env';
+import { requireAuth } from '../auth/middleware';
+import { getDb } from '../db/client';
+import {
+  consumeQuota,
+  deleteDiagnosis,
+  ensureUser,
+  getDiagnosis,
+  getRepairGuide,
+  insertDiagnosis,
+  listDiagnoses,
+  saveRepairGuide,
+  type ImageMeta,
+} from '../db/repos';
 import { AIProviderError, getAIProvider } from '../providers';
 import type { DiagnoseImage } from '../providers/types';
-import {
-  deleteDiagnosis,
-  loadDiagnosis,
-  loadRepairGuide,
-  saveDiagnosis,
-  saveRepairGuide,
-} from '../storage/diagnoses';
+import type { AppEnv } from '../types';
 
-export const diagnoses = new Hono<{ Bindings: Env }>();
+export const diagnoses = new Hono<AppEnv>();
+diagnoses.use('*', requireAuth);
 
-/** POST /diagnoses — pipeline complet : images -> IA -> Zod -> sécurité -> score. */
+/** POST /diagnoses — pipeline complet + quota + persistance Neon. */
 diagnoses.post('/', async (c) => {
   const json = await c.req.json().catch(() => null);
   const parsed = createDiagnosisRequestSchema.safeParse(json);
@@ -26,21 +33,36 @@ diagnoses.post('/', async (c) => {
     return c.json({ error: 'invalid_request', issues: parsed.error.issues }, 400);
   }
   const req = parsed.data;
-
   if (!req.description.trim() && req.imageIds.length === 0) {
     return c.json({ error: 'need_photo_or_description' }, 400);
   }
 
-  // Récupération des images depuis R2.
+  const db = getDb(c.env);
+  const userId = c.get('userId');
+  await ensureUser(db, userId, c.get('userEmail'));
+
+  const quota = await consumeQuota(db, userId);
+  if (!quota.allowed) {
+    return c.json({ error: 'quota_exceeded', used: quota.used, limit: quota.limit }, 429);
+  }
+
+  // Récupération des images depuis R2 (+ métadonnées pour la ligne diagnosis_images).
   const images: DiagnoseImage[] = [];
+  const imageMeta: ImageMeta[] = [];
   if (req.imageIds.length > 0) {
     if (!c.env.IMAGES) return c.json({ error: 'storage_unavailable' }, 503);
     for (const id of req.imageIds) {
-      const obj = await c.env.IMAGES.get(`uploads/${id}`);
+      const key = `uploads/${id}`;
+      const obj = await c.env.IMAGES.get(key);
       if (!obj) return c.json({ error: 'image_not_found', id }, 400);
-      images.push({
-        contentType: obj.httpMetadata?.contentType ?? 'image/jpeg',
-        data: await obj.arrayBuffer(),
+      const data = await obj.arrayBuffer();
+      const contentType = obj.httpMetadata?.contentType ?? 'image/jpeg';
+      images.push({ contentType, data });
+      imageMeta.push({
+        r2Key: key,
+        kind: obj.customMetadata?.kind ?? 'problem',
+        contentType,
+        bytes: data.byteLength,
       });
     }
   }
@@ -57,8 +79,10 @@ diagnoses.post('/', async (c) => {
     });
   } catch (err) {
     if (err instanceof AIProviderError) {
-      const status = err.code === 'ai_request_failed' ? 502 : 422;
-      return c.json({ error: err.code, message: err.message }, status);
+      return c.json(
+        { error: err.code, message: err.message },
+        err.code === 'ai_request_failed' ? 502 : 422,
+      );
     }
     throw err;
   }
@@ -84,27 +108,49 @@ diagnoses.post('/', async (c) => {
     repairability,
   } satisfies DiagnosisResult);
 
-  await saveDiagnosis(c.env, result);
-  return c.json({ ...result, aiProvider: provider.name, aiModel: provider.model }, 201);
+  await insertDiagnosis(db, userId, result, provider.name, provider.model, imageMeta);
+
+  return c.json(
+    { ...result, aiProvider: provider.name, aiModel: provider.model, quota },
+    201,
+  );
+});
+
+diagnoses.get('/', async (c) => {
+  const db = getDb(c.env);
+  const items = await listDiagnoses(db, c.get('userId'));
+  return c.json({ items });
 });
 
 diagnoses.get('/:id', async (c) => {
-  const found = await loadDiagnosis(c.env, c.req.param('id'));
+  const db = getDb(c.env);
+  const found = await getDiagnosis(db, c.get('userId'), c.req.param('id'));
   if (!found) return c.json({ error: 'not_found' }, 404);
   return c.json(found);
 });
 
+diagnoses.delete('/:id', async (c) => {
+  const db = getDb(c.env);
+  const r2Keys = await deleteDiagnosis(db, c.get('userId'), c.req.param('id'));
+  if (c.env.IMAGES) {
+    await Promise.all(r2Keys.map((k) => c.env.IMAGES!.delete(k)));
+  }
+  return c.body(null, 204);
+});
+
 /** GET /diagnoses/:id/repair-guide — génère (et met en cache) le guide pas-à-pas. */
 diagnoses.get('/:id/repair-guide', async (c) => {
+  const db = getDb(c.env);
+  const userId = c.get('userId');
   const id = c.req.param('id');
-  const diagnosis = await loadDiagnosis(c.env, id);
-  if (!diagnosis) return c.json({ error: 'not_found' }, 404);
 
+  const diagnosis = await getDiagnosis(db, userId, id);
+  if (!diagnosis) return c.json({ error: 'not_found' }, 404);
   if (diagnosis.safety.forcedStop) {
     return c.json({ error: 'guide_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
   }
 
-  const cached = await loadRepairGuide(c.env, id);
+  const cached = await getRepairGuide(db, id);
   if (cached) return c.json(cached);
 
   const provider = getAIProvider(c.env);
@@ -119,16 +165,14 @@ diagnoses.get('/:id/repair-guide', async (c) => {
     });
   } catch (err) {
     if (err instanceof AIProviderError) {
-      return c.json({ error: err.code, message: err.message }, err.code === 'ai_request_failed' ? 502 : 422);
+      return c.json(
+        { error: err.code, message: err.message },
+        err.code === 'ai_request_failed' ? 502 : 422,
+      );
     }
     throw err;
   }
 
-  await saveRepairGuide(c.env, id, guide);
+  await saveRepairGuide(db, id, guide, provider.name, provider.model);
   return c.json(guide);
-});
-
-diagnoses.delete('/:id', async (c) => {
-  await deleteDiagnosis(c.env, c.req.param('id'));
-  return c.body(null, 204);
 });

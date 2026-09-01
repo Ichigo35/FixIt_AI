@@ -69,12 +69,12 @@ Secrets : copier `.env.example` et renseigner `apps/api/.dev.vars` (jamais commi
 
 ## État du projet
 
-**PHASE 5 — REPAIR GUIDE terminée.** Pipeline complet : photo/texte → upload R2 →
-`POST /diagnoses` → **Gemini** (JSON structuré) → Zod → `classifySafety` →
-`computeRepairabilityScore` → écran résultat (ou **STOP**), puis
-`GET /diagnoses/:id/repair-guide` → guide pas-à-pas (TOOLS/PARTS/OPTIONAL, ⚠ SAFETY
-par étape, prix ou « Price unavailable »). Abstraction `AIProvider` (Gemini + Mock).
-41 tests verts. Prochaine étape : **PHASE 6 — NEON + AUTH + STORAGE**. Voir `TODO.md`.
+**PHASE 6 — NEON + AUTH + STORAGE terminée.** Auth **Neon Auth (Stack)** email/password,
+persistance **PostgreSQL/Neon** (Drizzle, 5 tables), images dans **R2**, quota **FREE 3/mois**,
+toutes les routes protégées et filtrées par utilisateur. Le pipeline complet
+(photo/texte → diagnostic → guide pas-à-pas, avec écran STOP) est en place depuis les
+phases 4–5. 41 tests verts (API en intégration contre Neon).
+Prochaine étape : **PHASE 7 — HISTORY**. Voir `TODO.md`.
 
 ## Documents
 

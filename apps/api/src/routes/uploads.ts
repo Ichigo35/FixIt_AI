@@ -6,22 +6,21 @@ import {
   type ImageKind,
   type UploadContentType,
 } from '@fixit/shared';
-import type { Env } from '../env';
+import { requireAuth } from '../auth/middleware';
+import type { AppEnv } from '../types';
 
 const CONTENT_TYPES = new Set<string>(UPLOAD_CONTENT_TYPES);
 const KINDS = new Set<string>(IMAGE_KINDS);
 
+/** Clé R2 plate ; l'appartenance est vérifiée via `customMetadata.userId`. */
 function objectKey(id: string): string {
   return `uploads/${id}`;
 }
 
-export const uploads = new Hono<{ Bindings: Env }>();
+export const uploads = new Hono<AppEnv>();
+uploads.use('*', requireAuth);
 
-/**
- * POST /uploads  (corps = octets bruts de l'image, header Content-Type requis)
- * Le Worker relaie l'upload vers R2 — aucune clé de stockage n'atteint le mobile.
- * L'image est "en attente" tant qu'elle n'est pas rattachée à un diagnostic (PHASE 4).
- */
+/** POST /uploads — corps = octets bruts, header Content-Type requis. Relais vers R2. */
 uploads.post('/', async (c) => {
   const contentType = (c.req.header('content-type') ?? '').split(';')[0]?.trim() ?? '';
   if (!CONTENT_TYPES.has(contentType)) {
@@ -41,7 +40,12 @@ uploads.post('/', async (c) => {
   const id = crypto.randomUUID();
   await c.env.IMAGES.put(objectKey(id), body, {
     httpMetadata: { contentType },
-    customMetadata: { id, kind, uploadedAt: new Date().toISOString() },
+    customMetadata: {
+      id,
+      kind,
+      userId: c.get('userId'),
+      uploadedAt: new Date().toISOString(),
+    },
   });
 
   return c.json(
@@ -50,11 +54,14 @@ uploads.post('/', async (c) => {
   );
 });
 
-/** GET /uploads/:id — renvoie l'image (preview / affichage historique). */
+/** GET /uploads/:id — renvoie l'image si elle appartient à l'utilisateur. */
 uploads.get('/:id', async (c) => {
   if (!c.env.IMAGES) return c.json({ error: 'storage_unavailable' }, 503);
-  const object = await c.env.IMAGES.get(objectKey(c.req.param('id')));
+  const object = await c.env.IMAGES.get(`uploads/${c.req.param('id')}`);
   if (!object) return c.json({ error: 'not_found' }, 404);
+  if (object.customMetadata?.userId && object.customMetadata.userId !== c.get('userId')) {
+    return c.json({ error: 'forbidden' }, 403);
+  }
 
   return new Response(object.body, {
     headers: {
@@ -65,9 +72,12 @@ uploads.get('/:id', async (c) => {
   });
 });
 
-/** DELETE /uploads/:id — suppression (confidentialité). */
 uploads.delete('/:id', async (c) => {
   if (!c.env.IMAGES) return c.json({ error: 'storage_unavailable' }, 503);
-  await c.env.IMAGES.delete(objectKey(c.req.param('id')));
+  const object = await c.env.IMAGES.get(`uploads/${c.req.param('id')}`);
+  if (object && object.customMetadata?.userId && object.customMetadata.userId !== c.get('userId')) {
+    return c.json({ error: 'forbidden' }, 403);
+  }
+  await c.env.IMAGES.delete(`uploads/${c.req.param('id')}`);
   return c.body(null, 204);
 });

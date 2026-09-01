@@ -141,13 +141,21 @@ Les URLs pré-signées restent possibles plus tard (optim).
 - ✅ CI GitHub Actions (`.github/workflows/ci.yml`) : `pnpm install --frozen-lockfile` → `lint` → `-r typecheck` → `-r test`, sur push/PR `main`. Tests API d'intégration : tournent si le secret `DATABASE_URL` est défini sur le dépôt, sinon `describe.runIf(hasDb)` les saute.
 - ⏳ EAS Build / dev client — avant distribution
 
-## Déploiement Cloudflare — préparé, bloqué
+## Déploiement Cloudflare ✅ (2026-09-01)
 
-- `wrangler` déjà authentifié (`tcha.jimmy@gmail.com`). `wrangler deploy --dry-run` **OK**.
-- ⛔ **R2 non activé sur le compte** : `dash.cloudflare.com/…/r2/plans` → « Add R2 subscription » ouvre un formulaire de paiement (carte + adresse). **À faire par l'utilisateur** (palier gratuit 10 Go, facturé seulement au-delà).
-- Ensuite : `wrangler r2 bucket create fixit-ai-images` · `wrangler secret put GEMINI_API_KEY` · `wrangler secret put DATABASE_URL` · `pnpm --filter @fixit/api deploy`.
-- ⚠️ **Avant prod** : `wrangler.toml` a `APP_ENV = "development"` → le bypass d'auth `x-dev-user-id` (`requireAuth`) resterait actif. Passer `APP_ENV = "production"` pour le déploiement (idéalement via `[env.production]`).
-- CI : secret dépôt `DATABASE_URL` posé (pointe la branche Neon principale ; envisager une branche Neon dédiée CI pour ne pas polluer/charger la prod).
+- **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).
+- **R2 abandonné** : son activation exigeait une carte bancaire. Remplacé par **Neon Object Storage** (S3-compatible, déjà activé, 5 Go gratuits) — voir plus bas.
+- Secrets Worker posés : `GEMINI_API_KEY`, `DATABASE_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`.
+- `APP_ENV=production` dans `wrangler.toml` → bypass `x-dev-user-id` désactivé (vérifié : `curl -H 'x-dev-user-id: hacker' … → 401`).
+- Vérifs prod : `/health` OK · 401 sans token · CORS 204 · E2E authentifié (Stack JWT) : upload → GET round-trip (bytes match) → autre user 403 → delete → 404. Diagnostic = 502 tant que le quota Gemini gratuit est épuisé (se réinitialise).
+- **Reste** : domaine custom Cloudflare (le `.workers.dev` suffit pour l'instant) ; build mobile pointant sur l'URL prod (`app.config.ts` : prod par défaut si `EXPO_PUBLIC_APP_ENV=production`).
+
+## Stockage objet — R2 → Neon Object Storage ✅
+
+- `apps/api/src/storage/` : `ObjectStorage` (put/get/delete) ; `s3.ts` (SigV4 `aws4fetch`, path-style, `x-amz-meta-*`) ; `memory.ts` (tests) ; `getStorage(env)`.
+- Bucket `fixit-ai-images` (private) + credential `fixit-api-worker-rw` (`storage:read`+`storage:write`).
+- Routes `uploads`/`diagnoses` migrées ; `wrangler.toml` : `[[r2_buckets]]` supprimé, vars `S3_*` ajoutées.
+- 53 tests (26 shared + 9 mobile + 18 api, dont purge-cascade de l'image). Round-trip vérifié local + prod.
 
 ---
 

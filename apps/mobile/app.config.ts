@@ -1,6 +1,12 @@
 import type { ExpoConfig } from 'expo/config';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8788';
+// Prod par défaut = Worker Cloudflare déployé ; dev/local = wrangler dev sur :8788.
+// Override explicite : EXPO_PUBLIC_API_BASE_URL.
+const PROD_API_URL = 'https://fixit-ai-api.ichigo35.workers.dev';
+const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  (APP_ENV === 'production' ? PROD_API_URL : 'http://localhost:8788');
 
 const config: ExpoConfig = {
   name: 'FixIt AI',
@@ -56,7 +62,7 @@ const config: ExpoConfig = {
   },
   extra: {
     apiBaseUrl: API_BASE_URL,
-    appEnv: process.env.EXPO_PUBLIC_APP_ENV ?? 'development',
+    appEnv: APP_ENV,
     stackProjectId:
       process.env.EXPO_PUBLIC_STACK_PROJECT_ID ?? '3432abc2-2b77-4b7b-acff-0686a7b99697',
     stackPublishableKey:

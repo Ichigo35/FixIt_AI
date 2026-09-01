@@ -11,7 +11,15 @@ import { Text } from './Text';
 
 type Tone = 'neutral' | 'success' | 'caution' | 'danger' | 'advanced';
 
-function Pill({ tone, children }: { tone: Tone; children: string }) {
+function Pill({
+  tone,
+  children,
+  accessibilityLabel,
+}: {
+  tone: Tone;
+  children: string;
+  accessibilityLabel?: string;
+}) {
   const theme = useTheme();
   const map: Record<Tone, { bg: string; fg: string }> = {
     neutral: { bg: theme.colors.border, fg: theme.colors.textMuted },
@@ -28,7 +36,7 @@ function Pill({ tone, children }: { tone: Tone; children: string }) {
     alignSelf: 'flex-start',
   };
   return (
-    <View style={style}>
+    <View style={style} accessible accessibilityLabel={accessibilityLabel ?? children}>
       <Text variant="caption" color={map[tone].fg}>
         {children}
       </Text>
@@ -57,15 +65,33 @@ const RECOMMENDATION_TONE: Record<Recommendation, Tone> = {
 };
 
 export function RiskBadge({ level }: { level: RiskLevel }) {
-  return <Pill tone={RISK_TONE[level]}>{`RISK · ${level}`}</Pill>;
+  return (
+    <Pill tone={RISK_TONE[level]} accessibilityLabel={`Risk level: ${level.toLowerCase()}`}>
+      {`RISK · ${level}`}
+    </Pill>
+  );
 }
 
 export function DifficultyBadge({ level }: { level: Difficulty }) {
   const meta = DIFFICULTY_META[level];
-  return <Pill tone={DIFFICULTY_TONE[level]}>{`${meta.emoji} ${meta.label.toUpperCase()}`}</Pill>;
+  return (
+    <Pill
+      tone={DIFFICULTY_TONE[level]}
+      accessibilityLabel={`Difficulty: ${meta.label.toLowerCase()}`}
+    >
+      {`${meta.emoji} ${meta.label.toUpperCase()}`}
+    </Pill>
+  );
 }
 
 export function RecommendationBadge({ level }: { level: Recommendation }) {
   const meta = RECOMMENDATION_META[level];
-  return <Pill tone={RECOMMENDATION_TONE[level]}>{`${meta.emoji} ${meta.title}`}</Pill>;
+  return (
+    <Pill
+      tone={RECOMMENDATION_TONE[level]}
+      accessibilityLabel={`Recommendation: ${meta.title.toLowerCase()}`}
+    >
+      {`${meta.emoji} ${meta.title}`}
+    </Pill>
+  );
 }

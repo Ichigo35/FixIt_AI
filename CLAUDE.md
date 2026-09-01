@@ -33,7 +33,7 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 | 7 — History | ✅ `My Repairs`, détail rouvrable, `POST /diagnoses/:id/history`, avant/après, feedback 👍/👎, 43 tests, push OK |
 | 8 — Interactive repair | ⏳ V2 (voir `TODO.md`) |
 | 9 — Video | ⏳ V3 |
-| 10 — Polish | ⏳ animations, onboarding, a11y, erreurs, perfs |
+| 10 — Polish | ✅ 1re passe : erreurs centralisées (`lib/errors.ts`), `LoadingState`/`ErrorState`/`EmptyState`, `ErrorBoundary`, onboarding (3 écrans + `OnboardingProvider`), animations `Animated` natives (`FadeInView`, meter, press), a11y, `history` en FlatList, **9 tests mobile (Vitest)**. Push OK |
 
 ## Infra provisionnée
 
@@ -43,6 +43,7 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 - **Cloudflare / R2** : binding `IMAGES` (bucket `fixit-ai-images`). `wrangler dev` simule R2 en local. Avant déploiement : `wrangler login`, `wrangler r2 bucket create fixit-ai-images`, `wrangler secret put GEMINI_API_KEY DATABASE_URL`.
 - **Domaine / DNS / hébergement : Cloudflare uniquement — jamais Vercel.**
 - Tests API = **intégration contre Neon réel** (lisent `apps/api/.dev.vars`, `describe.runIf(hasDb)`, users `test-*` nettoyés en `afterAll`).
+- Tests mobile = **Vitest sur modules purs uniquement** (`apps/mobile/vitest.config.ts`, env node, alias `@`). Pas de rendu RN. Garder les helpers testables hors Expo (ex. `ApiError` isolé dans `src/api/ApiError.ts`).
 
 ## Commandes
 

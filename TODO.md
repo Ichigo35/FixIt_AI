@@ -116,9 +116,18 @@ Les URLs pré-signées restent possibles plus tard (optim).
 
 - ⏸️ Capture vidéo, extraction frames, audio, analyse multimodale (jamais simulé)
 
-## PHASE 10 — POLISH ⏳/⏸️
+## PHASE 10 — POLISH ✅ (1re passe)
 
-- ⏳ Animations, gestion d'erreurs, accessibilité, onboarding, perfs, états de chargement
+- ✅ **Gestion d'erreurs centralisée** : `src/lib/errors.ts` (`friendlyError(err, context)` + `isRetryable`), pur, remplace les ternaires dupliquées dans `diagnosis/new`, `diagnosis/[id]`, `repair/[id]`, `history`, `CaptureFlow`, `auth`. `ApiError` extrait dans `src/api/ApiError.ts` (testable hors Expo).
+- ✅ **États réutilisables** : `LoadingState` / `ErrorState` / `EmptyState` (`src/components/StateView.tsx`) — spinner + message, bouton *Try again* seulement si l'erreur est réessayable, `accessibilityRole` alert/progressbar + live region.
+- ✅ **ErrorBoundary** racine (`src/components/ErrorBoundary.tsx`) → plus d'écran blanc en cas d'erreur de rendu, bouton *Reload the screen*.
+- ✅ **Onboarding** : 3 écrans d'intro (`app/onboarding.tsx`), `OnboardingProvider` (state partagé, persisté via `expo-secure-store`, clé `fixit.onboarding.v1`), portail dans `_layout` (intro → auth → app). *Skip* dispo.
+- ✅ **Animations** (API `Animated` native, **0 dépendance ajoutée**) : `FadeInView` (fondu + glissement à l'entrée, cascade sur les cartes du diagnostic + étapes du guide + onboarding), scale au *press* sur `Card`, remplissage animé du `RepairabilityMeter`.
+- ✅ **Accessibilité** : `accessibilityRole`/`Label`/`Hint`/`State` sur `Card`, `Button` (busy/disabled), badges (labels lisibles « Risk level: critical »…), `RepairabilityMeter` = `progressbar` + `accessibilityValue`, `StopView` = `alert` assertif, erreurs auth en `alert`, en-têtes `header`.
+- ✅ **Perfs** : `history` passé en `FlatList` + ligne `memo`, `getMe`/`listDiagnoses` avec garde `alive` (plus de setState après démontage), `headerBackButtonDisplayMode: 'minimal'`.
+- ✅ **Tests mobile** (nouveau) : Vitest sur les modules purs — `friendlyError`/`isRetryable` + `statusMeta`/`relativeTime`. **9 tests**. Total monorepo = **52** (26 shared + 17 api + 9 mobile).
+
+**Reste (V2 polish) :** skeletons de liste, haptique, `react-native-reanimated` pour transitions d'écran, empty states illustrés, gestion hors-ligne fine, i18n.
 
 ---
 

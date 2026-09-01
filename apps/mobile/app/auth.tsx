@@ -3,6 +3,7 @@ import { TextInput, View } from 'react-native';
 import { useAuth } from '@/auth/AuthProvider';
 import { StackAuthError } from '@/auth/stackClient';
 import { Button, Card, Screen, Text } from '@/components';
+import { friendlyError } from '@/lib/errors';
 import { useTheme } from '@/theme';
 
 export default function AuthScreen() {
@@ -32,7 +33,7 @@ export default function AuthScreen() {
               : err.message,
         );
       } else {
-        setError('Network error. Check your connection and that the API is running.');
+        setError(friendlyError(err, 'auth'));
       }
       setBusy(false);
     }
@@ -83,7 +84,12 @@ export default function AuthScreen() {
       </Card>
 
       {error ? (
-        <Text variant="caption" color={theme.colors.danger}>
+        <Text
+          variant="caption"
+          color={theme.colors.danger}
+          accessibilityLiveRegion="assertive"
+          accessibilityRole="alert"
+        >
           {error}
         </Text>
       ) : null}

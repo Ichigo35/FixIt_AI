@@ -1,17 +1,15 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import type { Category } from '@fixit/shared';
-import { ApiError } from '@/api/client';
 import { createDiagnosis, type DiagnosisResponse } from '@/api/diagnoses';
-import { Button, Screen, Text } from '@/components';
+import { ErrorState, LoadingState, Screen } from '@/components';
 import { DiagnosisResultView } from '@/features/diagnosis/DiagnosisResultView';
 import { StopView } from '@/features/diagnosis/StopView';
-import { useTheme } from '@/theme';
+import { friendlyError, isRetryable } from '@/lib/errors';
 
 type State =
   | { phase: 'loading' }
-  | { phase: 'error'; message: string }
+  | { phase: 'error'; message: string; canRetry: boolean }
   | { phase: 'done'; result: DiagnosisResponse };
 
 function parseIds(raw?: string): string[] {
@@ -25,7 +23,6 @@ function parseIds(raw?: string): string[] {
 }
 
 export default function NewDiagnosisScreen() {
-  const theme = useTheme();
   const params = useLocalSearchParams<{
     description?: string;
     category?: string;
@@ -44,17 +41,11 @@ export default function NewDiagnosisScreen() {
       });
       setState({ phase: 'done', result });
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.code === 'ai_request_failed'
-            ? 'The AI service is unavailable right now. Please try again in a moment.'
-            : err.code === 'quota_exceeded'
-              ? "You've used all your free diagnoses this month. Upgrade to Premium for unlimited."
-              : err.code === 'need_photo_or_description'
-                ? 'Add a photo or a description first.'
-                : `Something went wrong (${err.code}).`
-          : 'Network error. Check your connection and that the API is running.';
-      setState({ phase: 'error', message });
+      setState({
+        phase: 'error',
+        message: friendlyError(err, 'diagnosis'),
+        canRetry: isRetryable(err),
+      });
     }
   }, [params.description, params.category, params.imageIds]);
 
@@ -67,14 +58,10 @@ export default function NewDiagnosisScreen() {
   if (state.phase === 'loading') {
     return (
       <Screen>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.lg }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text variant="heading">Analyzing…</Text>
-          <Text muted center>
-            FixIt AI is looking at the problem and checking for safety risks. This can take up to a
-            minute.
-          </Text>
-        </View>
+        <LoadingState
+          title="Analyzing…"
+          detail="FixIt AI is looking at the problem and checking for safety risks. This can take up to a minute."
+        />
       </Screen>
     );
   }
@@ -82,11 +69,11 @@ export default function NewDiagnosisScreen() {
   if (state.phase === 'error') {
     return (
       <Screen>
-        <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.lg }}>
-          <Text variant="heading">Couldn&apos;t analyze this</Text>
-          <Text muted>{state.message}</Text>
-          <Button label="Try again" onPress={run} />
-        </View>
+        <ErrorState
+          title="Couldn't analyze this"
+          message={state.message}
+          onRetry={state.canRetry ? run : undefined}
+        />
       </Screen>
     );
   }

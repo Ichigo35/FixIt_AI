@@ -1,21 +1,18 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { getDiagnosis, type DiagnosisDetail, type HistoryEntry } from '@/api/diagnoses';
-import { ApiError } from '@/api/client';
-import { Button, Screen, Text } from '@/components';
+import { ErrorState, LoadingState, Screen } from '@/components';
 import { DiagnosisResultView } from '@/features/diagnosis/DiagnosisResultView';
 import { StopView } from '@/features/diagnosis/StopView';
 import { OutcomeSection } from '@/features/history/OutcomeSection';
-import { useTheme } from '@/theme';
+import { friendlyError, isRetryable } from '@/lib/errors';
 
 type State =
   | { phase: 'loading' }
-  | { phase: 'error'; message: string }
+  | { phase: 'error'; message: string; canRetry: boolean }
   | { phase: 'done'; detail: DiagnosisDetail };
 
 export default function DiagnosisDetailScreen() {
-  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [state, setState] = useState<State>({ phase: 'loading' });
 
@@ -26,10 +23,8 @@ export default function DiagnosisDetailScreen() {
     } catch (err) {
       setState({
         phase: 'error',
-        message:
-          err instanceof ApiError && err.code === 'not_found'
-            ? 'This diagnosis no longer exists.'
-            : 'Could not load this diagnosis.',
+        message: friendlyError(err, 'diagnosis'),
+        canRetry: isRetryable(err),
       });
     }
   }, [id]);
@@ -41,7 +36,14 @@ export default function DiagnosisDetailScreen() {
   const onHistoryUpdated = (history: HistoryEntry[]) => {
     setState((s) =>
       s.phase === 'done'
-        ? { phase: 'done', detail: { ...s.detail, history, status: history[0]?.outcome === 'fixed' ? 'fixed' : s.detail.status } }
+        ? {
+            phase: 'done',
+            detail: {
+              ...s.detail,
+              history,
+              status: history[0]?.outcome === 'fixed' ? 'fixed' : s.detail.status,
+            },
+          }
         : s,
     );
   };
@@ -49,9 +51,7 @@ export default function DiagnosisDetailScreen() {
   if (state.phase === 'loading') {
     return (
       <Screen>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
+        <LoadingState />
       </Screen>
     );
   }
@@ -59,11 +59,12 @@ export default function DiagnosisDetailScreen() {
   if (state.phase === 'error') {
     return (
       <Screen>
-        <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.lg }}>
-          <Text variant="heading">Not available</Text>
-          <Text muted>{state.message}</Text>
-          <Button label="Retry" onPress={load} />
-        </View>
+        <ErrorState
+          title="Not available"
+          message={state.message}
+          onRetry={state.canRetry ? load : undefined}
+          retryLabel="Retry"
+        />
       </Screen>
     );
   }

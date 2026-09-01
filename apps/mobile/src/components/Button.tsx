@@ -56,6 +56,8 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={loading ? `${label}, please wait` : label}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
       onPress={onPress}
       style={({ pressed }) => [container, pressed && { opacity: 0.8 }, style]}

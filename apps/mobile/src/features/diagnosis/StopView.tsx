@@ -10,7 +10,19 @@ export function StopView({ result }: { result: DiagnosisResult }) {
 
   return (
     <View style={{ gap: theme.spacing.lg }}>
-      <Card style={{ backgroundColor: theme.colors.dangerBg, borderColor: theme.colors.danger }}>
+      <View
+        accessible
+        accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
+        style={{
+          backgroundColor: theme.colors.dangerBg,
+          borderColor: theme.colors.danger,
+          borderWidth: 1,
+          borderRadius: theme.radii.lg,
+          padding: theme.spacing.lg,
+          gap: theme.spacing.sm,
+        }}
+      >
         <Text variant="display" color={theme.colors.danger}>
           🔴 STOP
         </Text>
@@ -21,7 +33,7 @@ export function StopView({ result }: { result: DiagnosisResult }) {
           Based on what you described, this is not safe to attempt yourself. FixIt AI will not
           provide repair steps for this.
         </Text>
-      </Card>
+      </View>
 
       <Card>
         <Text variant="caption" muted>

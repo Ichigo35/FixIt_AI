@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { getMe, type Me } from '@/api/me';
 import { useAuth } from '@/auth/AuthProvider';
-import { Card, Screen, Text } from '@/components';
+import { Card, FadeInView, Screen, Text } from '@/components';
 import { useTheme } from '@/theme';
 
 interface Action {
@@ -52,35 +52,54 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      let alive = true;
       getMe()
-        .then(setMe)
-        .catch(() => setMe(null));
+        .then((v) => alive && setMe(v))
+        .catch(() => alive && setMe(null));
+      return () => {
+        alive = false;
+      };
     }, []),
   );
 
+  const quotaLine = me
+    ? me.plan === 'premium'
+      ? 'Premium · unlimited'
+      : `${Math.max(0, me.quota.limit - me.quota.used)} of ${me.quota.limit} diagnoses left`
+    : null;
+
   return (
     <Screen scroll>
-      <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
-        <Text variant="display">FixIt AI</Text>
-        <Text variant="body" muted>
-          What&apos;s wrong? Let&apos;s figure it out.
-        </Text>
-      </View>
+      <FadeInView>
+        <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
+          <Text variant="display" accessibilityRole="header">
+            FixIt AI
+          </Text>
+          <Text variant="body" muted>
+            What&apos;s wrong? Let&apos;s figure it out.
+          </Text>
+        </View>
+      </FadeInView>
 
       {me ? (
         <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View
+            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+          >
             <View>
               <Text variant="caption" muted>
                 {me.email ?? 'Signed in'}
               </Text>
-              <Text variant="bodyStrong">
-                {me.plan === 'premium'
-                  ? 'Premium · unlimited'
-                  : `${Math.max(0, me.quota.limit - me.quota.used)} of ${me.quota.limit} diagnoses left`}
+              <Text variant="bodyStrong" accessibilityLabel={quotaLine ?? undefined}>
+                {quotaLine}
               </Text>
             </View>
-            <Pressable onPress={signOut} hitSlop={8}>
+            <Pressable
+              onPress={signOut}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+            >
               <Text variant="caption" color={theme.colors.primary}>
                 Sign out
               </Text>
@@ -89,7 +108,11 @@ export default function HomeScreen() {
         </Card>
       ) : null}
 
-      <Card onPress={() => router.push('/history')}>
+      <Card
+        onPress={() => router.push('/history')}
+        accessibilityLabel="My Repairs"
+        accessibilityHint="Past diagnoses, guides and before/after photos"
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
           <Text style={{ fontSize: 26 }}>🧰</Text>
           <View style={{ flex: 1, gap: 2 }}>
@@ -108,12 +131,18 @@ export default function HomeScreen() {
         {ACTIONS.map((action) => (
           <Card
             key={action.title}
+            disabled={action.soon}
             onPress={
               action.route
                 ? () => router.push({ pathname: action.route!, params: action.params })
-                : undefined
+                : action.soon
+                  ? () => undefined
+                  : undefined
             }
-            style={{ opacity: action.soon ? 0.55 : 1 }}
+            accessibilityLabel={
+              action.soon ? `${action.title}. Coming soon.` : action.title
+            }
+            accessibilityHint={action.soon ? undefined : action.subtitle}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
               <Text style={{ fontSize: 26 }}>{action.icon}</Text>

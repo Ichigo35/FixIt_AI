@@ -1,20 +1,18 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import type { RepairGuide } from '@fixit/shared';
-import { ApiError } from '@/api/client';
 import { getRepairGuide } from '@/api/repairGuide';
-import { Button, Screen, Text } from '@/components';
+import { ErrorState, LoadingState, Screen } from '@/components';
 import { RepairGuideView } from '@/features/repair/RepairGuideView';
-import { useTheme } from '@/theme';
+import { ApiError } from '@/api/client';
+import { friendlyError, isRetryable } from '@/lib/errors';
 
 type State =
   | { phase: 'loading' }
-  | { phase: 'error'; message: string }
+  | { phase: 'error'; message: string; canRetry: boolean }
   | { phase: 'done'; guide: RepairGuide };
 
 export default function RepairGuideScreen() {
-  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [state, setState] = useState<State>({ phase: 'loading' });
   const started = useRef(false);
@@ -24,15 +22,12 @@ export default function RepairGuideScreen() {
     try {
       setState({ phase: 'done', guide: await getRepairGuide(String(id)) });
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.code === 'guide_unavailable'
-            ? 'This problem is not safe to attempt yourself — no guide is available.'
-            : err.code === 'ai_request_failed'
-              ? 'The AI service is unavailable right now. Please try again in a moment.'
-              : `Something went wrong (${err.code}).`
-          : 'Network error. Check your connection and that the API is running.';
-      setState({ phase: 'error', message });
+      const isStop = err instanceof ApiError && err.code === 'guide_unavailable';
+      setState({
+        phase: 'error',
+        message: friendlyError(err, 'repairGuide'),
+        canRetry: !isStop && isRetryable(err),
+      });
     }
   }, [id]);
 
@@ -45,10 +40,7 @@ export default function RepairGuideScreen() {
   if (state.phase === 'loading') {
     return (
       <Screen>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.lg }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text variant="heading">Building your repair guide…</Text>
-        </View>
+        <LoadingState title="Building your repair guide…" />
       </Screen>
     );
   }
@@ -56,11 +48,11 @@ export default function RepairGuideScreen() {
   if (state.phase === 'error') {
     return (
       <Screen>
-        <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.lg }}>
-          <Text variant="heading">No guide</Text>
-          <Text muted>{state.message}</Text>
-          <Button label="Try again" onPress={run} />
-        </View>
+        <ErrorState
+          title="No guide"
+          message={state.message}
+          onRetry={state.canRetry ? run : undefined}
+        />
       </Screen>
     );
   }

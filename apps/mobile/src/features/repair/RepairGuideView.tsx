@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import type { Part, RepairGuide } from '@fixit/shared';
-import { Button, Card, DifficultyBadge, Screen, Text } from '@/components';
+import { Button, Card, DifficultyBadge, FadeInView, Screen, Text } from '@/components';
 import { useTheme } from '@/theme';
 
 function priceLabel(p: Part): string {
@@ -107,15 +107,28 @@ export function RepairGuideView({ guide }: { guide: RepairGuide }) {
   const step = guide.steps[pos]!;
   return (
     <Screen scroll>
-      <Text variant="caption" muted>
-        STEP {pos + 1} / {guide.steps.length}
-      </Text>
-      <Text variant="title">{step.title}</Text>
-      <Text>{step.instruction}</Text>
+      <FadeInView key={pos} offset={14}>
+        <View style={{ gap: theme.spacing.lg }}>
+          <Text
+            variant="caption"
+            muted
+            accessibilityRole="progressbar"
+            accessibilityLabel={`Step ${pos + 1} of ${guide.steps.length}`}
+          >
+            STEP {pos + 1} / {guide.steps.length}
+          </Text>
+          <Text variant="title">{step.title}</Text>
+          <Text>{step.instruction}</Text>
+        </View>
+      </FadeInView>
 
       {step.safetyWarning ? (
         <Card style={{ backgroundColor: theme.colors.dangerBg, borderColor: theme.colors.danger }}>
-          <Text variant="caption" color={theme.colors.danger}>
+          <Text
+            variant="caption"
+            color={theme.colors.danger}
+            accessibilityRole="header"
+          >
             ⚠ SAFETY
           </Text>
           <Text>{step.safetyWarning}</Text>

@@ -3,9 +3,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { ApiError } from '@/api/client';
 import { uploadImage } from '@/api/uploads';
 import { Button, Card, Text } from '@/components';
+import { friendlyError } from '@/lib/errors';
 import { useTheme } from '@/theme';
 import { CameraCapture } from './CameraCapture';
 
@@ -50,11 +50,7 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
       });
     } catch (err) {
       setStatus('error');
-      setError(
-        err instanceof ApiError
-          ? `Upload failed (${err.code}). Is the API running?`
-          : 'Upload failed. Check your connection and that the API is running.',
-      );
+      setError(friendlyError(err, 'upload'));
     }
   };
 

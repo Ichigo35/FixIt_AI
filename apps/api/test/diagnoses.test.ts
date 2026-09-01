@@ -3,7 +3,7 @@ import { inArray } from 'drizzle-orm';
 import { createApp } from '../src/app';
 import { getDb } from '../src/db/client';
 import { appUsers } from '../src/db/schema';
-import { baseEnv, devAuth, hasDb, jpegBytes, memoryBucket } from './helpers';
+import { baseEnv, devAuth, hasDb, jpegBytes, memoryStorage } from './helpers';
 
 const createdUsers: string[] = [];
 function freshUser(): string {
@@ -13,7 +13,7 @@ function freshUser(): string {
 }
 
 function env(extra: object = {}) {
-  return { ...baseEnv, IMAGES: memoryBucket(), ...extra };
+  return { ...baseEnv, STORAGE: memoryStorage(), ...extra };
 }
 
 async function post(app: ReturnType<typeof createApp>, body: unknown, e: object, user: string) {
@@ -196,5 +196,28 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     ).json()) as { id: string };
     const res = await post(app, { description: 'fridge not cooling', imageIds: [up.id] }, e, uid);
     expect(res.status).toBe(201);
+  });
+
+  it('DELETE /diagnoses/:id purge aussi l\'image liée du stockage objet', async () => {
+    const uid = freshUser();
+    const e = env();
+    const store = (e.STORAGE as ReturnType<typeof memoryStorage>)._store;
+    const app = createApp();
+
+    const up = (await (
+      await app.request(
+        '/uploads',
+        { method: 'POST', headers: { 'content-type': 'image/jpeg', ...devAuth(uid) }, body: jpegBytes },
+        e,
+      )
+    ).json()) as { id: string };
+    const diag = (await (
+      await post(app, { description: 'leaking pipe under sink', imageIds: [up.id] }, e, uid)
+    ).json()) as { id: string };
+    expect(store.has(`uploads/${up.id}`)).toBe(true);
+
+    const del = await app.request(`/diagnoses/${diag.id}`, { method: 'DELETE', headers: devAuth(uid) }, e);
+    expect(del.status).toBe(204);
+    expect(store.has(`uploads/${up.id}`)).toBe(false);
   });
 });

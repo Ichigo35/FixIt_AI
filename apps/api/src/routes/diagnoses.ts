@@ -23,6 +23,7 @@ import {
 } from '../db/repos';
 import { AIProviderError, getAIProvider } from '../providers';
 import type { DiagnoseImage } from '../providers/types';
+import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
 
 export const diagnoses = new Hono<AppEnv>();
@@ -49,21 +50,22 @@ diagnoses.post('/', async (c) => {
     return c.json({ error: 'quota_exceeded', used: quota.used, limit: quota.limit }, 429);
   }
 
-  // Récupération des images depuis R2 (+ métadonnées pour la ligne diagnosis_images).
+  // Récupération des images depuis le stockage objet (+ métadonnées pour diagnosis_images).
   const images: DiagnoseImage[] = [];
   const imageMeta: ImageMeta[] = [];
   if (req.imageIds.length > 0) {
-    if (!c.env.IMAGES) return c.json({ error: 'storage_unavailable' }, 503);
+    const storage = getStorage(c.env);
+    if (!storage) return c.json({ error: 'storage_unavailable' }, 503);
     for (const id of req.imageIds) {
       const key = `uploads/${id}`;
-      const obj = await c.env.IMAGES.get(key);
+      const obj = await storage.get(key);
       if (!obj) return c.json({ error: 'image_not_found', id }, 400);
-      const data = await obj.arrayBuffer();
-      const contentType = obj.httpMetadata?.contentType ?? 'image/jpeg';
+      const data = obj.data;
+      const contentType = obj.contentType || 'image/jpeg';
       images.push({ contentType, data });
       imageMeta.push({
         r2Key: key,
-        kind: obj.customMetadata?.kind ?? 'problem',
+        kind: obj.metadata.kind ?? 'problem',
         contentType,
         bytes: data.byteLength,
       });
@@ -150,12 +152,13 @@ diagnoses.post('/:id/history', async (c) => {
   }
   const body = parsed.data;
 
-  // Résout un imageId -> clé R2 en vérifiant l'appartenance.
+  // Résout un imageId -> clé de stockage en vérifiant l'appartenance.
+  const storage = getStorage(c.env);
   const resolveKey = async (imageId?: string | null): Promise<string | null> => {
-    if (!imageId || !c.env.IMAGES) return null;
-    const obj = await c.env.IMAGES.get(`uploads/${imageId}`);
+    if (!imageId || !storage) return null;
+    const obj = await storage.get(`uploads/${imageId}`);
     if (!obj) return null;
-    if (obj.customMetadata?.userId && obj.customMetadata.userId !== userId) return null;
+    if (obj.metadata.userid && obj.metadata.userid !== userId) return null;
     return `uploads/${imageId}`;
   };
 
@@ -173,9 +176,10 @@ diagnoses.post('/:id/history', async (c) => {
 
 diagnoses.delete('/:id', async (c) => {
   const db = getDb(c.env);
-  const r2Keys = await deleteDiagnosis(db, c.get('userId'), c.req.param('id'));
-  if (c.env.IMAGES) {
-    await Promise.all(r2Keys.map((k) => c.env.IMAGES!.delete(k)));
+  const keys = await deleteDiagnosis(db, c.get('userId'), c.req.param('id'));
+  const storage = getStorage(c.env);
+  if (storage) {
+    await Promise.all(keys.map((k) => storage.delete(k)));
   }
   return c.body(null, 204);
 });

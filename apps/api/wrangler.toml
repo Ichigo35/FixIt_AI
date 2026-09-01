@@ -8,22 +8,23 @@ workers_dev = true
 port = 8788
 
 # Variables publiques (non secrètes). Les secrets -> `wrangler secret put` ou .dev.vars
+# APP_ENV=production par défaut : désactive le bypass d'auth `x-dev-user-id`.
+# En local, `apps/api/.dev.vars` remet APP_ENV=development ; les tests posent APP_ENV=test.
 [vars]
-APP_ENV = "development"
+APP_ENV = "production"
 FREE_MONTHLY_DIAGNOSES = "3"
 GEMINI_MODEL = "gemini-3.6-flash"
 # Neon Auth (Stack) — publishable, non secret
 STACK_PROJECT_ID = "3432abc2-2b77-4b7b-acff-0686a7b99697"
 STACK_JWKS_URL = "https://api.stack-auth.com/api/v1/projects/3432abc2-2b77-4b7b-acff-0686a7b99697/.well-known/jwks.json"
 STACK_PUBLISHABLE_KEY = "pck_marynb4bzhy8q7heg7r3j467011pjcmfa29f6hvzcqx90"
-
-# Bucket R2 pour les images.
-# `wrangler dev` simule R2 en local (aucun compte requis).
-# Avant déploiement : `wrangler r2 bucket create fixit-ai-images`
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "fixit-ai-images"
+# Neon Object Storage (S3-compatible) — endpoint/bucket publics, région us-east-2
+S3_ENDPOINT = "https://br-rough-feather-a5r1cdyr.storage.c-1.us-east-2.aws.neon.tech"
+S3_REGION = "us-east-2"
+S3_BUCKET = "fixit-ai-images"
 
 # Secrets attendus (déclarés ici pour mémoire, valeurs jamais committées) :
-#   GEMINI_API_KEY   -> wrangler secret put GEMINI_API_KEY
-#   DATABASE_URL     -> wrangler secret put DATABASE_URL   (chaîne de connexion Neon)
+#   GEMINI_API_KEY        -> wrangler secret put GEMINI_API_KEY
+#   DATABASE_URL          -> wrangler secret put DATABASE_URL        (chaîne de connexion Neon)
+#   S3_ACCESS_KEY_ID      -> wrangler secret put S3_ACCESS_KEY_ID    (credential Neon storage:write)
+#   S3_SECRET_ACCESS_KEY  -> wrangler secret put S3_SECRET_ACCESS_KEY

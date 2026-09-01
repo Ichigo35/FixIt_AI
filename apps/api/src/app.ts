@@ -5,6 +5,7 @@ import { getDb } from './db/client';
 import { ensureUser, getQuota } from './db/repos';
 import { diagnoses } from './routes/diagnoses';
 import { uploads } from './routes/uploads';
+import { getStorage } from './storage';
 import type { AppEnv } from './types';
 
 export function createApp() {
@@ -22,7 +23,7 @@ export function createApp() {
       services: {
         gemini: Boolean(c.env.GEMINI_API_KEY),
         database: Boolean(c.env.DATABASE_URL),
-        storage: Boolean(c.env.IMAGES),
+        storage: getStorage(c.env) !== null,
         auth: Boolean(c.env.STACK_JWKS_URL),
       },
     }),

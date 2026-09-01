@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
-import { baseEnv, devAuth, memoryBucket } from './helpers';
+import { baseEnv, devAuth, memoryStorage } from './helpers';
 
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 const uid = 'test-uploads';
 
 function env(extra: object = {}) {
-  return { ...baseEnv, IMAGES: memoryBucket(), ...extra };
+  return { ...baseEnv, STORAGE: memoryStorage(), ...extra };
 }
 
 describe('POST /uploads', () => {
@@ -32,7 +32,7 @@ describe('POST /uploads', () => {
     const body = (await res.json()) as { id: string; kind: string; bytes: number };
     expect(body.kind).toBe('problem');
     expect(body.bytes).toBe(jpeg.byteLength);
-    expect((e.IMAGES as ReturnType<typeof memoryBucket>)._store.has(`uploads/${body.id}`)).toBe(true);
+    expect((e.STORAGE as ReturnType<typeof memoryStorage>)._store.has(`uploads/${body.id}`)).toBe(true);
   });
 
   it('refuse un type non image (415)', async () => {

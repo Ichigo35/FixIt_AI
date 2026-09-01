@@ -13,6 +13,7 @@
   "dependencies": {
     "@fixit/shared": "workspace:*",
     "@neondatabase/serverless": "^1.1.0",
+    "aws4fetch": "^1.0.20",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.6.15",
     "jose": "^6.2.10",

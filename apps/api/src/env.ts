@@ -1,3 +1,5 @@
+import type { ObjectStorage } from './storage/types';
+
 /** Bindings et variables d'environnement du Worker. */
 export interface Env {
   // vars
@@ -14,6 +16,13 @@ export interface Env {
   STACK_JWKS_URL?: string;
   STACK_PUBLISHABLE_KEY?: string;
 
-  // bindings
-  IMAGES?: R2Bucket;
+  // Neon Object Storage (S3-compatible). Endpoint/bucket = vars, clés = secrets.
+  S3_ENDPOINT?: string;
+  S3_REGION?: string;
+  S3_BUCKET?: string;
+  S3_ACCESS_KEY_ID?: string;
+  S3_SECRET_ACCESS_KEY?: string;
+
+  /** Stockage injecté par les tests (jamais défini en production). */
+  STORAGE?: ObjectStorage;
 }

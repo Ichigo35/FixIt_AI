@@ -1,5 +1,7 @@
 # FixIt AI
 
+[![CI](https://github.com/Ichigo35/FixIt_AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Ichigo35/FixIt_AI/actions/workflows/ci.yml)
+
 > **What's wrong? Let's figure it out.**
 
 Assistant mobile de diagnostic et de réparation par IA. L'utilisateur photographie ou décrit un

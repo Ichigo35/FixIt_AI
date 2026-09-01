@@ -138,7 +138,7 @@ Les URLs pré-signées restent possibles plus tard (optim).
 - ⏸️ `PartsProvider` (prix/dispo réels)
 - ⏸️ `AnalyticsClient` (PostHog ou équivalent)
 - ⏸️ `BillingClient` / RevenueCat (FREE/PREMIUM)
-- ⏳ CI GitHub Actions (lint + typecheck + tests) — dès PHASE 2
+- ✅ CI GitHub Actions (`.github/workflows/ci.yml`) : `pnpm install --frozen-lockfile` → `lint` → `-r typecheck` → `-r test`, sur push/PR `main`. Tests API d'intégration : tournent si le secret `DATABASE_URL` est défini sur le dépôt, sinon `describe.runIf(hasDb)` les saute.
 - ⏳ EAS Build / dev client — avant distribution
 
 ---

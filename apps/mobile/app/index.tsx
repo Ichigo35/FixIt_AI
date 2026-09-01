@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { getMe, type Me } from '@/api/me';
 import { useAuth } from '@/auth/AuthProvider';
 import { Card, FadeInView, Screen, Text } from '@/components';
+import { t } from '@/i18n';
 import { useTheme } from '@/theme';
 
 interface Action {
@@ -18,28 +19,28 @@ interface Action {
 const ACTIONS: Action[] = [
   {
     icon: '📷',
-    title: 'Take a photo',
-    subtitle: 'Snap the problem and let AI look',
+    title: t('home.actionPhotoTitle'),
+    subtitle: t('home.actionPhotoSub'),
     route: '/capture',
     params: { mode: 'camera' },
   },
   {
     icon: '🖼️',
-    title: 'Upload a photo',
-    subtitle: 'Pick an existing photo from your library',
+    title: t('home.actionUploadTitle'),
+    subtitle: t('home.actionUploadSub'),
     route: '/capture',
     params: { mode: 'library' },
   },
   {
     icon: '✍️',
-    title: 'Describe the problem',
-    subtitle: 'Tell us what is wrong in your own words',
+    title: t('home.actionDescribeTitle'),
+    subtitle: t('home.actionDescribeSub'),
     route: '/describe',
   },
   {
     icon: '🎥',
-    title: 'Record a video',
-    subtitle: 'Strange noises & movement — coming soon',
+    title: t('home.actionVideoTitle'),
+    subtitle: t('home.actionVideoSub'),
     soon: true,
   },
 ];
@@ -64,8 +65,11 @@ export default function HomeScreen() {
 
   const quotaLine = me
     ? me.plan === 'premium'
-      ? 'Premium · unlimited'
-      : `${Math.max(0, me.quota.limit - me.quota.used)} of ${me.quota.limit} diagnoses left`
+      ? t('home.quotaPremium')
+      : t('home.quotaLeft', {
+          left: Math.max(0, me.quota.limit - me.quota.used),
+          limit: me.quota.limit,
+        })
     : null;
 
   return (
@@ -76,7 +80,7 @@ export default function HomeScreen() {
             FixIt AI
           </Text>
           <Text variant="body" muted>
-            What&apos;s wrong? Let&apos;s figure it out.
+            {t('home.tagline')}
           </Text>
         </View>
       </FadeInView>
@@ -88,7 +92,7 @@ export default function HomeScreen() {
           >
             <View>
               <Text variant="caption" muted>
-                {me.email ?? 'Signed in'}
+                {me.email ?? t('common.signedIn')}
               </Text>
               <Text variant="bodyStrong" accessibilityLabel={quotaLine ?? undefined}>
                 {quotaLine}
@@ -98,10 +102,10 @@ export default function HomeScreen() {
               onPress={signOut}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Sign out"
+              accessibilityLabel={t('common.signOut')}
             >
               <Text variant="caption" color={theme.colors.primary}>
-                Sign out
+                {t('common.signOut')}
               </Text>
             </Pressable>
           </View>
@@ -110,15 +114,15 @@ export default function HomeScreen() {
 
       <Card
         onPress={() => router.push('/history')}
-        accessibilityLabel="My Repairs"
-        accessibilityHint="Past diagnoses, guides and before/after photos"
+        accessibilityLabel={t('home.myRepairs')}
+        accessibilityHint={t('home.myRepairsSub')}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
           <Text style={{ fontSize: 26 }}>🧰</Text>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="heading">My Repairs</Text>
+            <Text variant="heading">{t('home.myRepairs')}</Text>
             <Text variant="caption" muted>
-              Past diagnoses, guides and before/after
+              {t('home.myRepairsSub')}
             </Text>
           </View>
           <Text variant="heading" muted>
@@ -140,7 +144,7 @@ export default function HomeScreen() {
                   : undefined
             }
             accessibilityLabel={
-              action.soon ? `${action.title}. Coming soon.` : action.title
+              action.soon ? `${action.title}. ${t('home.comingSoon')}` : action.title
             }
             accessibilityHint={action.soon ? undefined : action.subtitle}
           >
@@ -154,7 +158,7 @@ export default function HomeScreen() {
               </View>
               {action.soon ? (
                 <Text variant="caption" color={theme.colors.caution}>
-                  SOON
+                  {t('home.soon')}
                 </Text>
               ) : (
                 <Text variant="heading" muted>
@@ -167,8 +171,7 @@ export default function HomeScreen() {
       </View>
 
       <Text variant="caption" muted center style={{ marginTop: theme.spacing.md }}>
-        FixIt AI gives likely causes, not certainties. For anything involving mains power, gas,
-        pressure or vehicle safety systems, it will tell you to call a professional.
+        {t('home.disclaimer')}
       </Text>
     </Screen>
   );

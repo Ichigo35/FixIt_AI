@@ -4,6 +4,7 @@ import { FlatList, RefreshControl, View } from 'react-native';
 import { listDiagnoses, type DiagnosisListItem } from '@/api/diagnoses';
 import { Card, EmptyState, ErrorState, Screen, SkeletonList, Text } from '@/components';
 import { relativeTime, statusMeta } from '@/features/history/statusMeta';
+import { t } from '@/i18n';
 import { friendlyError } from '@/lib/errors';
 import { haptics } from '@/lib/haptics';
 import { useTheme, type Theme } from '@/theme';
@@ -35,7 +36,7 @@ const HistoryRow = memo(function HistoryRow({
     <Card
       onPress={() => onPress(item.id)}
       accessibilityLabel={`${item.problem}. ${meta.label}. ${relativeTime(item.createdAt)}.`}
-      accessibilityHint="Opens this repair"
+      accessibilityHint={t('history.openHint')}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.md }}>
         <View style={{ flex: 1, gap: 2 }}>
@@ -88,7 +89,7 @@ export default function HistoryScreen() {
     return (
       <Screen>
         <Text variant="title" style={{ marginBottom: theme.spacing.xs }}>
-          My Repairs
+          {t('history.title')}
         </Text>
         <SkeletonList rows={5} />
       </Screen>
@@ -98,7 +99,7 @@ export default function HistoryScreen() {
   if (state.phase === 'error') {
     return (
       <Screen>
-        <ErrorState title="Couldn't load your repairs" message={state.message} onRetry={load} />
+        <ErrorState title={t('history.loadError')} message={state.message} onRetry={load} />
       </Screen>
     );
   }
@@ -108,9 +109,9 @@ export default function HistoryScreen() {
       <Screen>
         <EmptyState
           icon="🧰"
-          title="No repairs yet"
-          message="Your diagnoses will show up here once you run one."
-          action={{ label: 'Start a diagnosis', onPress: () => router.replace('/') }}
+          title={t('history.emptyTitle')}
+          message={t('history.emptyMessage')}
+          action={{ label: t('history.emptyAction'), onPress: () => router.replace('/') }}
         />
       </Screen>
     );
@@ -124,7 +125,7 @@ export default function HistoryScreen() {
         contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.md }}
         ListHeaderComponent={
           <Text variant="title" style={{ marginBottom: theme.spacing.xs }}>
-            My Repairs
+            {t('history.title')}
           </Text>
         }
         renderItem={({ item }) => <HistoryRow item={item} theme={theme} onPress={openItem} />}

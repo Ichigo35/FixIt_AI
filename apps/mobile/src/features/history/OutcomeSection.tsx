@@ -4,10 +4,28 @@ import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import type { DiagnosisDetail, HistoryEntry } from '@/api/diagnoses';
 import { submitHistory } from '@/api/diagnoses';
+import { ApiError } from '@/api/ApiError';
 import { imageSourceFromKey, uploadImage } from '@/api/uploads';
 import { Button, Card, Text } from '@/components';
 import { haptics } from '@/lib/haptics';
+import { useOutbox } from '@/lib/outbox';
 import { useTheme } from '@/theme';
+
+type HistoryInput = Parameters<typeof submitHistory>[1];
+
+/** Entrée d'historique locale, en attendant que la file hors-ligne la rejoue. */
+function optimisticEntry(input: HistoryInput): HistoryEntry {
+  return {
+    id: `local-${Date.now()}`,
+    outcome: input.outcome,
+    feedbackWorked: input.feedbackWorked ?? null,
+    feedbackNote: input.feedbackNote ?? null,
+    summary: null,
+    beforeR2Key: null,
+    afterR2Key: null,
+    createdAt: new Date().toISOString(),
+  };
+}
 
 export function OutcomeSection({
   detail,
@@ -17,15 +35,17 @@ export function OutcomeSection({
   onUpdated: (history: HistoryEntry[]) => void;
 }) {
   const theme = useTheme();
+  const { enqueue } = useOutbox();
   const [mode, setMode] = useState<'buttons' | 'note'>('buttons');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
 
   const latest = detail.history[0];
   const solved = latest?.outcome === 'fixed';
 
-  const send = async (input: Parameters<typeof submitHistory>[1]) => {
+  const send = async (input: HistoryInput) => {
     setBusy(true);
     setError(null);
     try {
@@ -33,9 +53,22 @@ export function OutcomeSection({
       if (input.outcome === 'fixed') haptics.success();
       else haptics.tap();
       onUpdated(history);
-    } catch {
-      haptics.error();
-      setError('Could not save. Try again.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        haptics.error();
+        setError('Could not save. Try again.');
+      } else {
+        // Hors-ligne : on met en file et on reflète le résultat localement.
+        enqueue({
+          kind: 'history',
+          path: `/diagnoses/${detail.id}/history`,
+          body: input,
+          label: detail.diagnosis.problem,
+        });
+        haptics.tap();
+        setQueued(true);
+        onUpdated([optimisticEntry(input), ...detail.history]);
+      }
     } finally {
       setBusy(false);
     }
@@ -70,6 +103,11 @@ export function OutcomeSection({
           Problem solved 🎉
         </Text>
         {latest?.feedbackNote ? <Text muted>{latest.feedbackNote}</Text> : null}
+        {queued ? (
+          <Text variant="caption" muted>
+            Saved — will sync when you’re back online.
+          </Text>
+        ) : null}
         {before || after ? (
           <View style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.sm }}>
             {before ? (
@@ -154,6 +192,11 @@ export function OutcomeSection({
       {error ? (
         <Text variant="caption" color={theme.colors.danger}>
           {error}
+        </Text>
+      ) : null}
+      {queued ? (
+        <Text variant="caption" muted>
+          Saved — will sync when you’re back online.
         </Text>
       ) : null}
     </Card>

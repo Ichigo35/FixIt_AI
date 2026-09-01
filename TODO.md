@@ -142,7 +142,20 @@ Les URLs pré-signées restent possibles plus tard (optim).
 - ✅ **Hors-ligne** : `ConnectivityProvider` (`src/lib/connectivity.tsx`) branché sur `netBridge` du client API (2 échecs consécutifs → offline, 1 succès → online) + `OfflineBanner` animé dans `_layout`.
 - Bundle iOS OK (1189 modules). 55 tests.
 
-**Reste (3e passe éventuelle) :** `react-native-reanimated` (transitions d'écran), empty states illustrés, i18n, file d'attente de retry hors-ligne.
+### PHASE 10 — 3e passe ✅ (2026-09-01)
+
+- ✅ **File de retry hors-ligne** : `src/lib/outboxQueue.ts` (pur : `addItem` dédoublonne sur path+body, `markAttempt`, `pruneExhausted`, `MAX_ATTEMPTS=6`) + `OutboxProvider` (persistance `expo-secure-store`, rejeu auto à la reconnexion via `useConnectivity`, abandon des erreurs métier `ApiError`). `OutcomeSection` : un feedback envoyé hors-ligne est mis en file + reflété localement (`optimisticEntry`). `OfflineBanner` affiche l'état de synchro. **+5 tests**.
+- ✅ **i18n FR/EN (fondation)** : `src/i18n/` — `translate.ts` pur (`lookup` clés pointées, `interpolate` `{param}`, `makeTranslator` avec repli en→clé), catalogues `en.ts`/`fr.ts`, `index.ts` (`getLocales()` d'`expo-localization`, plugin ajouté). Écrans convertis : **accueil, My Repairs, auth**. Test de parité des clés en/fr. **+9 tests**. Reste : les autres écrans suivent le même `t()`.
+- ✅ **Empty/Error states illustrés** : `IconMedallion` (emoji sur cercles concentriques teintés, 0 dépendance — pas de SVG) dans `EmptyState` + `ErrorState`.
+- ✅ **Transitions d'écran** : via `react-native-screens` (déjà présent) — `animation: 'slide_from_right'` global, `'fade'` pour index/auth/onboarding. **`react-native-reanimated` écarté** : sa v4 tire `react-native-worklets` (peer non résolu ici) + exige un rebuild natif (pas d'EAS, disque à 95 %) et contredit le choix « 0 dépendance » des animations `Animated`.
+- Bundle iOS OK. Total 88 tests.
+
+## PHASE 6b — OAuth Google (mobile) ✅ (2026-09-01)
+
+- ✅ **Neon Auth (Stack)** : provider Google déjà dispo en **clés partagées** (dev). Domaine de confiance `https://fixit-ai-api.ichigo35.workers.dev` ajouté.
+- ✅ **Worker** : route publique `GET /auth/callback` — rebond du `redirect_uri` https (exigé par Stack) vers le schéma natif `fixitai://oauth?code=…&state=…` (meta-refresh, seuls `code`/`state`/`error` relayés). **+1 test**.
+- ✅ **Mobile** : `src/auth/oauth.ts` — flux code d'autorisation **+ PKCE** (`expo-crypto` S256), `expo-web-browser` `openAuthSessionAsync`, vérif du `state`, échange sur `/auth/oauth/token`, `sub` extrait du JWT (`src/auth/jwt.ts`, testé). `AuthProvider.signInWithGoogle` + bouton « Continue with Google » sur l'écran auth (`OAuthCancelledError` silencieuse).
+- **Reste (prod)** : créer des identifiants Google OAuth propres + les poser dans Neon Auth (`add_auth_oauth_provider`) pour retirer l'écran de consentement « Stack » ; tester le flux complet sur un dev-client (Expo Go ne gère pas le schéma natif). OAuth GitHub/Apple = plus tard.
 
 ## Sécurité — durcissement ✅ (2026-09-01)
 

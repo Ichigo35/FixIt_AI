@@ -36,6 +36,16 @@ describe('API', () => {
     expect(res.headers.get('x-powered-by')).toBeNull();
   });
 
+  it('GET /auth/callback rebondit vers le schéma natif avec code + state', async () => {
+    const app = createApp();
+    const res = await app.request('/auth/callback?code=abc123&state=xyz&evil=%3Cscript%3E', {}, baseEnv);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('fixitai://oauth?code=abc123&state=xyz');
+    expect(html).not.toContain('evil');
+    expect(html).not.toContain('<script');
+  });
+
   it('corps trop volumineux sur /uploads -> 413', async () => {
     const app = createApp();
     const huge = new Uint8Array(11 * 1024 * 1024); // > MAX_UPLOAD_BYTES (10 Mio)

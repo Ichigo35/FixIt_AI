@@ -1,19 +1,35 @@
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useAuth } from '@/auth/AuthProvider';
+import { OAuthCancelledError } from '@/auth/oauth';
 import { StackAuthError } from '@/auth/stackClient';
 import { Button, Card, Screen, Text } from '@/components';
+import { t } from '@/i18n';
 import { friendlyError } from '@/lib/errors';
 import { useTheme } from '@/theme';
 
 export default function AuthScreen() {
   const theme = useTheme();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const google = async () => {
+    setGoogleBusy(true);
+    setError(null);
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      if (!(err instanceof OAuthCancelledError)) {
+        setError(err instanceof StackAuthError ? err.message : friendlyError(err, 'auth'));
+      }
+      setGoogleBusy(false);
+    }
+  };
 
   const canSubmit = /.+@.+\..+/.test(email) && password.length >= 8 && !busy;
 
@@ -27,9 +43,9 @@ export default function AuthScreen() {
       if (err instanceof StackAuthError) {
         setError(
           err.code === 'USER_NOT_FOUND' || err.code === 'PASSWORD_MISMATCH' || err.code === 'EMAIL_PASSWORD_MISMATCH'
-            ? 'Wrong email or password.'
+            ? t('auth.wrongCredentials')
             : err.code === 'USER_EMAIL_ALREADY_EXISTS'
-              ? 'An account with this email already exists — sign in instead.'
+              ? t('auth.emailExists')
               : err.message,
         );
       } else {
@@ -49,12 +65,12 @@ export default function AuthScreen() {
     <Screen scroll>
       <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xxl }}>
         <Text variant="display">FixIt AI</Text>
-        <Text muted>{mode === 'in' ? 'Sign in to continue' : 'Create your account'}</Text>
+        <Text muted>{mode === 'in' ? t('auth.signInSubtitle') : t('auth.signUpSubtitle')}</Text>
       </View>
 
       <Card>
         <Text variant="caption" muted>
-          EMAIL
+          {t('auth.email')}
         </Text>
         <TextInput
           value={email}
@@ -62,7 +78,7 @@ export default function AuthScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           style={inputStyle}
         />
@@ -70,14 +86,14 @@ export default function AuthScreen() {
 
       <Card>
         <Text variant="caption" muted>
-          PASSWORD
+          {t('auth.password')}
         </Text>
         <TextInput
           value={password}
           onChangeText={setPassword}
           secureTextEntry
           autoCapitalize="none"
-          placeholder="At least 8 characters"
+          placeholder={t('auth.passwordPlaceholder')}
           placeholderTextColor={theme.colors.textMuted}
           style={inputStyle}
         />
@@ -95,13 +111,28 @@ export default function AuthScreen() {
       ) : null}
 
       <Button
-        label={mode === 'in' ? 'Sign in' : 'Create account'}
+        label={mode === 'in' ? t('auth.signIn') : t('auth.createAccount')}
         loading={busy}
         disabled={!canSubmit}
         onPress={submit}
       />
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border }} />
+        <Text variant="caption" muted>
+          {t('auth.or')}
+        </Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: theme.colors.border }} />
+      </View>
+
       <Button
-        label={mode === 'in' ? 'New here? Create an account' : 'Already have an account? Sign in'}
+        label={t('auth.continueWithGoogle')}
+        variant="secondary"
+        loading={googleBusy}
+        onPress={google}
+      />
+      <Button
+        label={mode === 'in' ? t('auth.toSignUp') : t('auth.toSignIn')}
         variant="ghost"
         onPress={() => {
           setMode(mode === 'in' ? 'up' : 'in');

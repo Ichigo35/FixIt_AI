@@ -39,6 +39,27 @@ export function createApp() {
 
   app.get('/', (c) => c.json({ name: 'FixIt AI API', status: 'ok' }));
 
+  // Rebond OAuth : Neon Auth (Stack) exige un redirect_uri https ; on renvoie
+  // l'utilisateur vers le schéma natif de l'app avec le code d'autorisation.
+  app.get('/auth/callback', (c) => {
+    const url = new URL(c.req.url);
+    // Ne relaie que les paramètres OAuth attendus (pas d'injection arbitraire).
+    const passthrough = new URLSearchParams();
+    for (const k of ['code', 'state', 'error', 'error_description']) {
+      const v = url.searchParams.get(k);
+      if (v) passthrough.set(k, v);
+    }
+    const target = `fixitai://oauth?${passthrough.toString()}`;
+    const safeTarget = target.replace(/[<>"]/g, encodeURIComponent);
+    return c.html(
+      `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">` +
+        `<meta http-equiv="refresh" content="0;url=${safeTarget}">` +
+        `<title>Signing you in…</title>` +
+        `<p style="font-family:system-ui;text-align:center;padding:3rem">` +
+        `Signing you in… <a href="${safeTarget}">Return to FixIt AI</a></p>`,
+    );
+  });
+
   app.get('/health', (c) =>
     c.json({
       status: 'ok',

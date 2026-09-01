@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { ErrorBoundary, LoadingState, OfflineBanner } from '@/components';
 import { ConnectivityProvider } from '@/lib/connectivity';
+import { OutboxProvider } from '@/lib/outbox';
 import { OnboardingProvider, useOnboarding } from '@/lib/onboarding';
 import { ThemeProvider, useTheme } from '@/theme';
 
@@ -47,11 +48,16 @@ function RootStack() {
           headerShadowVisible: false,
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: theme.colors.background },
+          animation: 'slide_from_right',
+          animationDuration: 240,
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen name="auth" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen
+          name="onboarding"
+          options={{ headerShown: false, animation: 'fade' }}
+        />
         <Stack.Screen name="describe" options={{ title: 'Describe the problem' }} />
         <Stack.Screen name="capture" options={{ title: 'Photo' }} />
         <Stack.Screen name="history" options={{ title: 'My Repairs' }} />
@@ -70,11 +76,13 @@ export default function RootLayout() {
       <ThemeProvider>
         <ErrorBoundary>
           <ConnectivityProvider>
-            <OnboardingProvider>
-              <AuthProvider>
-                <RootStack />
-              </AuthProvider>
-            </OnboardingProvider>
+            <OutboxProvider>
+              <OnboardingProvider>
+                <AuthProvider>
+                  <RootStack />
+                </AuthProvider>
+              </OnboardingProvider>
+            </OutboxProvider>
           </ConnectivityProvider>
         </ErrorBoundary>
       </ThemeProvider>

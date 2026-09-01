@@ -56,6 +56,8 @@ const config: ExpoConfig = {
       },
     ],
     'expo-secure-store',
+    'expo-localization',
+    'expo-web-browser',
   ],
   experiments: {
     typedRoutes: true,

@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { authBridge } from '@/api/client';
+import { signInWithGoogle as oauthSignInWithGoogle } from './oauth';
 import {
   refreshAccessToken,
   signIn as stackSignIn,
@@ -25,6 +26,7 @@ interface AuthState {
   session: StackSession | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -97,6 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [persist],
   );
 
+  const signInWithGoogle = useCallback(async () => {
+    await persist(await oauthSignInWithGoogle());
+  }, [persist]);
+
   const signOut = useCallback(async () => {
     const current = sessionRef.current;
     if (current) await signOutStack(current.refreshToken);
@@ -104,8 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persist]);
 
   const value = useMemo<AuthState>(
-    () => ({ status, session, signIn, signUp, signOut }),
-    [status, session, signIn, signUp, signOut],
+    () => ({ status, session, signIn, signUp, signInWithGoogle, signOut }),
+    [status, session, signIn, signUp, signInWithGoogle, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,6 +3,51 @@ import { useTheme } from '@/theme';
 import { Button } from './Button';
 import { Text } from './Text';
 
+/**
+ * Médaillon illustré : l'emoji posé sur deux cercles concentriques teintés.
+ * Illustration légère, sans dépendance (pas de SVG).
+ */
+function IconMedallion({ emoji, tone = 'primary' }: { emoji: string; tone?: 'primary' | 'danger' }) {
+  const theme = useTheme();
+  const base = tone === 'danger' ? theme.colors.danger : theme.colors.primary;
+  return (
+    <View
+      style={{
+        width: 112,
+        height: 112,
+        borderRadius: 56,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+      }}
+    >
+      <View
+        style={{
+          position: 'absolute',
+          width: 84,
+          height: 84,
+          borderRadius: 42,
+          backgroundColor: base,
+          opacity: theme.scheme === 'dark' ? 0.22 : 0.12,
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: base,
+          opacity: theme.scheme === 'dark' ? 0.32 : 0.18,
+        }}
+      />
+      <Text style={{ fontSize: 40 }}>{emoji}</Text>
+    </View>
+  );
+}
+
 /** Bloc centré, occupe l'espace disponible. */
 function Centered({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
@@ -72,9 +117,9 @@ export function ErrorState({
         accessible
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
-        style={{ alignItems: 'center', gap: theme.spacing.sm }}
+        style={{ alignItems: 'center', gap: theme.spacing.md }}
       >
-        <Text style={{ fontSize: 34 }}>😕</Text>
+        <IconMedallion emoji="😕" tone="danger" />
         <Text variant="heading" center>
           {title}
         </Text>
@@ -100,7 +145,7 @@ export function EmptyState({ icon = '📭', title, message, action }: EmptyState
   const theme = useTheme();
   return (
     <Centered>
-      <Text style={{ fontSize: 34 }}>{icon}</Text>
+      <IconMedallion emoji={icon} />
       <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
         <Text variant="heading" center>
           {title}

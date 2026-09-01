@@ -141,6 +141,14 @@ Les URLs pré-signées restent possibles plus tard (optim).
 - ✅ CI GitHub Actions (`.github/workflows/ci.yml`) : `pnpm install --frozen-lockfile` → `lint` → `-r typecheck` → `-r test`, sur push/PR `main`. Tests API d'intégration : tournent si le secret `DATABASE_URL` est défini sur le dépôt, sinon `describe.runIf(hasDb)` les saute.
 - ⏳ EAS Build / dev client — avant distribution
 
+## Déploiement Cloudflare — préparé, bloqué
+
+- `wrangler` déjà authentifié (`tcha.jimmy@gmail.com`). `wrangler deploy --dry-run` **OK**.
+- ⛔ **R2 non activé sur le compte** : `dash.cloudflare.com/…/r2/plans` → « Add R2 subscription » ouvre un formulaire de paiement (carte + adresse). **À faire par l'utilisateur** (palier gratuit 10 Go, facturé seulement au-delà).
+- Ensuite : `wrangler r2 bucket create fixit-ai-images` · `wrangler secret put GEMINI_API_KEY` · `wrangler secret put DATABASE_URL` · `pnpm --filter @fixit/api deploy`.
+- ⚠️ **Avant prod** : `wrangler.toml` a `APP_ENV = "development"` → le bypass d'auth `x-dev-user-id` (`requireAuth`) resterait actif. Passer `APP_ENV = "production"` pour le déploiement (idéalement via `[env.production]`).
+- CI : secret dépôt `DATABASE_URL` posé (pointe la branche Neon principale ; envisager une branche Neon dédiée CI pour ne pas polluer/charger la prod).
+
 ---
 
 ## Rituel de fin de phase (rappel)

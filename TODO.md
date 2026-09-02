@@ -259,7 +259,7 @@ OAuth GitHub/Apple = plus tard.
 - `GeminiProvider.call` + `uploadAndWaitVideo` : 429 → `AIProviderError('ai_rate_limited', { retryAfterMs })` ; route `diagnoses` mappe `ai_rate_limited` → **429**. Tous les modèles en 429 ⇒ `ai_rate_limited`.
 - Vars ajoutées : `GEMINI_FALLBACK_MODEL` (`env.ts`, `wrangler.toml [vars]`, `.dev.vars`, `test/helpers.ts`). **Aucun nouveau secret** (même clé). Les 2 ids validés dispo sur la clé (`GET /v1beta/models`).
 - **116 tests** (44 shared + **44 api** + 28 mobile) — `apps/api/test/geminiFailover.test.ts` (6 tests : `fetch` mocké + fake timers ; bascule, repos/reprise, repos par défaut, tous 429, non-429 sans bascule, 1 seul modèle).
-- **Reste** : `pnpm --filter @fixit/api run deploy` pour propager `GEMINI_FALLBACK_MODEL` en prod (à lancer par l'utilisateur).
+- ✅ **Worker déployé (2026-09-02, version `6daeb673`)** — `GEMINI_FALLBACK_MODEL=gemini-3.5-flash` visible dans les bindings, `/health` OK.
 
 ## Déploiement Cloudflare ✅ (2026-09-01)
 

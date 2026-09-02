@@ -83,6 +83,33 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(((await denied.json()) as any).error).toBe('quota_exceeded');
   });
 
+  it('admin (ADMIN_EMAILS) : accès illimité, quota jamais consommé', async () => {
+    const uid = freshUser();
+    const app = createApp();
+    const e = env({ ADMIN_EMAILS: 'boss@example.com , other@x.io' });
+    const auth = { ...devAuth(uid), 'x-dev-user-email': 'BOSS@example.com' };
+    for (let i = 0; i < 5; i++) {
+      const r = await app.request(
+        '/diagnoses',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...auth },
+          body: JSON.stringify({ description: `admin issue ${i}` }),
+        },
+        e,
+      );
+      expect(r.status).toBe(201);
+      const body = (await r.json()) as Record<string, any>;
+      expect(body.quota.used).toBe(0);
+      expect(body.quota.limit).toBeNull(); // Infinity -> null en JSON
+    }
+
+    const me = await app.request('/me', { headers: auth }, e);
+    const meBody = (await me.json()) as Record<string, any>;
+    expect(meBody.role).toBe('admin');
+    expect(meBody.quota.used).toBe(0);
+  });
+
   it('isolation : un autre utilisateur ne voit pas le diagnostic (404)', async () => {
     const uid = freshUser();
     const intruder = freshUser();

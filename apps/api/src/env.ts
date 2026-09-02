@@ -6,6 +6,8 @@ export interface Env {
   APP_ENV: string;
   FREE_MONTHLY_DIAGNOSES: string;
   GEMINI_MODEL: string;
+  /** Emails (séparés par des virgules) promus administrateurs : accès illimité. */
+  ADMIN_EMAILS?: string;
 
   // secrets (via `wrangler secret put` / .dev.vars)
   GEMINI_API_KEY?: string;

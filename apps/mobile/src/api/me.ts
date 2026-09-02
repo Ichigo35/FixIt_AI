@@ -4,6 +4,7 @@ export interface Me {
   id: string;
   email: string | null;
   plan: string;
+  role?: string;
   quota: { used: number; limit: number };
 }
 

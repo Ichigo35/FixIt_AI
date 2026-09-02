@@ -9,6 +9,7 @@ import {
   type RepairCheck,
   type RepairSessionStatus,
 } from '@fixit/shared';
+import { isAdminEmail } from '../auth/admin';
 import { requireAuth } from '../auth/middleware';
 import { rateLimit } from '../middleware/rateLimit';
 import { getDb } from '../db/client';
@@ -50,7 +51,8 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
 
   const db = getDb(c.env);
   const userId = c.get('userId');
-  await ensureUser(db, userId, c.get('userEmail'));
+  const email = c.get('userEmail');
+  await ensureUser(db, userId, email, email ? isAdminEmail(c.env, email) : undefined);
 
   const quota = await consumeQuota(db, userId);
   if (!quota.allowed) {

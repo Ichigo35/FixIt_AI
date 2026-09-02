@@ -181,6 +181,17 @@ Les URLs pré-signées restent possibles plus tard (optim).
 - ✅ CI GitHub Actions (`.github/workflows/ci.yml`) : `pnpm install --frozen-lockfile` → `lint` → `-r typecheck` → `-r test`, sur push/PR `main`. Tests API d'intégration : tournent si le secret `DATABASE_URL` est défini sur le dépôt, sinon `describe.runIf(hasDb)` les saute.
 - ⏳ EAS Build / dev client — avant distribution
 
+## Rôle administrateur / accès illimité ✅ (2026-09-02)
+
+- Colonne `app_users.role` (`text NOT NULL DEFAULT 'user'`) — migration `0002_user_role.sql`, **appliquée sur Neon prod**.
+- Var `ADMIN_EMAILS` (`wrangler.toml [vars]` + `.dev.vars`) = liste d'emails, séparés par des virgules. `apps/api/src/auth/admin.ts` (`isAdminEmail`).
+- `ensureUser(db, id, email, isAdmin?)` synchronise `role` sur la liste à chaque `/me` et `POST /diagnoses` (email connu → `admin`/`user` ; email inconnu → inchangé).
+- `getQuota` / `consumeQuota` : `role === 'admin'` (ou `plan === 'premium'`) ⇒ limite `Infinity`, **quota jamais consommé** (`diagnoses_used` reste à 0). `/me` renvoie désormais `role`.
+- Mobile : `Me.role`, accueil affiche « Administrateur · illimité » (i18n `home.quotaAdmin` FR/EN).
+- `tcha.jimmy@gmail.com` promu `admin` en base (le seul compte existant). Un système d'abonnement (`plan`) pour les autres profils reste à faire.
+- 89 tests (test admin : 5 diagnostics d'affilée en 201, `quota.used` reste 0).
+- **Reste** : `pnpm --filter @fixit/api run deploy` pour propager la var `ADMIN_EMAILS` en prod (bloqué côté agent, à lancer manuellement).
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

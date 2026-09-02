@@ -19,14 +19,27 @@ import {
 
 const PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Crée le profil applicatif au premier appel, ou met l'email à jour. */
-export async function ensureUser(db: Db, id: string, email: string | null): Promise<void> {
+/**
+ * Crée le profil applicatif au premier appel, ou met l'email à jour.
+ * `isAdmin` : `true`/`false` synchronise le rôle sur la liste `ADMIN_EMAILS` ;
+ * `undefined` (email inconnu) laisse le rôle tel quel.
+ */
+export async function ensureUser(
+  db: Db,
+  id: string,
+  email: string | null,
+  isAdmin?: boolean,
+): Promise<void> {
+  const role = isAdmin === undefined ? undefined : isAdmin ? 'admin' : 'user';
   await db
     .insert(appUsers)
-    .values({ id, email })
+    .values({ id, email, role: role ?? 'user' })
     .onConflictDoUpdate({
       target: appUsers.id,
-      set: { email: email ?? sql`${appUsers.email}` },
+      set: {
+        email: email ?? sql`${appUsers.email}`,
+        ...(role ? { role } : {}),
+      },
     });
 }
 
@@ -35,35 +48,46 @@ export interface QuotaState {
   used: number;
   limit: number;
   plan: string;
+  role: string;
+}
+
+/** Un admin ou un abonné premium n'a aucune limite de diagnostics. */
+function isUnlimited(plan: string, role: string): boolean {
+  return role === 'admin' || plan === 'premium';
 }
 
 export async function getQuota(db: Db, userId: string): Promise<QuotaState> {
   const [u] = await db.select().from(appUsers).where(eq(appUsers.id, userId));
   const plan = u?.plan ?? 'free';
-  const limit = plan === 'premium' ? Number.POSITIVE_INFINITY : FREE_MONTHLY_DIAGNOSES;
-  if (!u) return { allowed: true, used: 0, limit, plan };
+  const role = u?.role ?? 'user';
+  const limit = isUnlimited(plan, role) ? Number.POSITIVE_INFINITY : FREE_MONTHLY_DIAGNOSES;
+  if (!u) return { allowed: true, used: 0, limit, plan, role };
   const expired = Date.now() - new Date(u.periodStart).getTime() > PERIOD_MS;
   const used = expired ? 0 : u.diagnosesUsed;
-  return { allowed: used < limit, used, limit, plan };
+  return { allowed: used < limit, used, limit, plan, role };
 }
 
-/** Vérifie puis consomme un crédit de diagnostic. */
+/** Vérifie puis consomme un crédit de diagnostic (jamais consommé pour un accès illimité). */
 export async function consumeQuota(db: Db, userId: string): Promise<QuotaState> {
   const [u] = await db.select().from(appUsers).where(eq(appUsers.id, userId));
   const plan = u?.plan ?? 'free';
-  const limit = plan === 'premium' ? Number.POSITIVE_INFINITY : FREE_MONTHLY_DIAGNOSES;
+  const role = u?.role ?? 'user';
+  const unlimited = isUnlimited(plan, role);
+  const limit = unlimited ? Number.POSITIVE_INFINITY : FREE_MONTHLY_DIAGNOSES;
   const now = new Date();
   const expired = !u || now.getTime() - new Date(u.periodStart).getTime() > PERIOD_MS;
   const used = expired ? 0 : u.diagnosesUsed;
 
-  if (used >= limit) return { allowed: false, used, limit, plan };
+  if (used >= limit) return { allowed: false, used, limit, plan, role };
 
-  await db
-    .update(appUsers)
-    .set({ diagnosesUsed: used + 1, periodStart: expired ? now : u.periodStart })
-    .where(eq(appUsers.id, userId));
+  if (!unlimited) {
+    await db
+      .update(appUsers)
+      .set({ diagnosesUsed: used + 1, periodStart: expired ? now : u.periodStart })
+      .where(eq(appUsers.id, userId));
+  }
 
-  return { allowed: true, used: used + 1, limit, plan };
+  return { allowed: true, used: unlimited ? used : used + 1, limit, plan, role };
 }
 
 export interface ImageMeta {

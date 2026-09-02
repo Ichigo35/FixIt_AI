@@ -3,6 +3,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { MAX_UPLOAD_BYTES } from '@fixit/shared';
+import { isAdminEmail } from './auth/admin';
 import { requireAuth } from './auth/middleware';
 import { getDb } from './db/client';
 import { ensureUser, getQuota } from './db/repos';
@@ -78,12 +79,14 @@ export function createApp() {
   app.get('/me', requireAuth, async (c) => {
     const db = getDb(c.env);
     const userId = c.get('userId');
-    await ensureUser(db, userId, c.get('userEmail'));
+    const email = c.get('userEmail');
+    await ensureUser(db, userId, email, email ? isAdminEmail(c.env, email) : undefined);
     const quota = await getQuota(db, userId);
     return c.json({
       id: userId,
-      email: c.get('userEmail'),
+      email,
       plan: quota.plan,
+      role: quota.role,
       quota: { used: quota.used, limit: quota.limit },
     });
   });

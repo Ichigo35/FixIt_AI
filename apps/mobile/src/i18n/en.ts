@@ -11,6 +11,7 @@ export const en: Dict = {
   home: {
     tagline: "What's wrong? Let's figure it out.",
     quotaPremium: 'Premium · unlimited',
+    quotaAdmin: 'Admin · unlimited',
     quotaLeft: '{left} of {limit} diagnoses left',
     myRepairs: 'My Repairs',
     myRepairsSub: 'Past diagnoses, guides and before/after',

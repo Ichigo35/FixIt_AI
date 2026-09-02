@@ -63,14 +63,18 @@ export default function HomeScreen() {
     }, []),
   );
 
-  const quotaLine = me
-    ? me.plan === 'premium'
-      ? t('home.quotaPremium')
+  const unlimited =
+    !!me && (me.role === 'admin' || me.plan === 'premium' || !Number.isFinite(me.quota.limit));
+  const quotaLine = !me
+    ? null
+    : unlimited
+      ? me.role === 'admin'
+        ? t('home.quotaAdmin')
+        : t('home.quotaPremium')
       : t('home.quotaLeft', {
           left: Math.max(0, me.quota.limit - me.quota.used),
           limit: me.quota.limit,
-        })
-    : null;
+        });
 
   return (
     <Screen scroll>

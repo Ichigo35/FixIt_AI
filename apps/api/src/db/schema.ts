@@ -17,6 +17,8 @@ export const appUsers = pgTable('app_users', {
   id: text('id').primaryKey(),
   email: text('email'),
   plan: text('plan').notNull().default('free'),
+  /** 'user' (défaut) ou 'admin' — un admin a un accès illimité, quota jamais consommé. */
+  role: text('role').notNull().default('user'),
   diagnosesUsed: integer('diagnoses_used').notNull().default(0),
   periodStart: timestamp('period_start', { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

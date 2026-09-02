@@ -251,7 +251,7 @@ OAuth GitHub/Apple = plus tard.
 - **`RepairGuideView`** : aperçu → chaque entrée `TOOLS` / `OPTIONAL` précédée de son icône ; étape → médaillon d'icône de type dans l'en-tête + ligne `TOOLS` en puces « icône + nom ».
 - **Illustrations d'étape par IA écartées** (choix utilisateur) : pictos génériques par type d'étape, instantané / hors-ligne / gratuit.
 - **110 tests** (44 shared + 38 api + 28 mobile) — `packages/shared/test/icons.test.ts` (mapping FR/EN, replis, ids valides). Metro `expo export` android OK (41 assets bundlés).
-- **Reste** : rebâtir l'APK release pour voir le rendu sur device (JS bundlé seulement, pas de build natif requis) ; parité i18n non concernée (RepairGuideView encore en EN codé en dur).
+- ✅ **APK release rebuildé (2026-09-02 23:31, ~52 Mo)** via `./gradlew :app:assembleRelease` seul (pas de `expo prebuild` : changement JS/assets uniquement). BUILD SUCCESSFUL, ~19 min (daemon froid). Parité i18n non concernée (RepairGuideView encore en EN codé en dur).
 
 ### Bascule automatique modèle Gemini (quota) ✅ (2026-09-02)
 

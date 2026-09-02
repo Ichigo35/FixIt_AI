@@ -42,14 +42,19 @@ export async function signInWithGoogle(): Promise<StackSession> {
   const challenge = await pkceChallenge(verifier);
   const state = randomToken(16);
 
+  // Paramètres alignés sur le SDK @stackframe (getOAuthUrl) : scope FIXE = "legacy",
+  // `type=authenticate`, `error_redirect_url` requis. Stack injecte lui-même les
+  // scopes Google (email/profile) côté serveur.
   const authUrl = new URL(`${STACK_BASE}/auth/oauth/authorize/google`);
   const q = authUrl.searchParams;
   q.set('client_id', config.stackProjectId);
   q.set('client_secret', config.stackPublishableKey);
   q.set('redirect_uri', REDIRECT_URI);
+  q.set('error_redirect_url', REDIRECT_URI);
   q.set('response_type', 'code');
   q.set('grant_type', 'authorization_code');
-  q.set('scope', 'openid');
+  q.set('scope', 'legacy');
+  q.set('type', 'authenticate');
   q.set('state', state);
   q.set('code_challenge', challenge);
   q.set('code_challenge_method', 'S256');

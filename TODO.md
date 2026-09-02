@@ -251,7 +251,15 @@ OAuth GitHub/Apple = plus tard.
 - **`RepairGuideView`** : aperçu → chaque entrée `TOOLS` / `OPTIONAL` précédée de son icône ; étape → médaillon d'icône de type dans l'en-tête + ligne `TOOLS` en puces « icône + nom ».
 - **Illustrations d'étape par IA écartées** (choix utilisateur) : pictos génériques par type d'étape, instantané / hors-ligne / gratuit.
 - **110 tests** (44 shared + 38 api + 28 mobile) — `packages/shared/test/icons.test.ts` (mapping FR/EN, replis, ids valides). Metro `expo export` android OK (41 assets bundlés).
-- ✅ **APK release rebuildé (2026-09-02 23:31, ~52 Mo)** via `./gradlew :app:assembleRelease` seul (pas de `expo prebuild` : changement JS/assets uniquement). BUILD SUCCESSFUL, ~19 min (daemon froid). Parité i18n non concernée (RepairGuideView encore en EN codé en dur).
+- ✅ **APK release rebuildé (2026-09-02 23:46, ~52 Mo)** avec le guide illustré. Parité i18n non concernée (RepairGuideView encore en EN codé en dur).
+
+### Build APK local accéléré ✅ (2026-09-02)
+
+- **Cause de la lenteur (~19 min systématiques) : `org.gradle.daemon=false`** dans `~/.gradle/gradle.properties` (posé par une session précédente « pour la RAM ») → JVM Gradle froide + **état de compilation incrémentale Kotlin jeté à chaque build** → `compileReleaseKotlin` recompilait tout. Le clean `/storage-audit` de l'utilisateur n'y était **pour rien** (`~/.gradle` intact 4,4 Go, disque à 49 Go libres).
+- **Fix** : `~/.gradle/gradle.properties` → `daemon=true` + `idletimeout=1200000` (rend la RAM 20 min après) + `caching` + `parallel`/`workers.max=4`. `apps/mobile/android/gradle.properties` → cache, JDK 17 épinglé (un seul daemon), `kotlin.daemon.jvmargs=-Xmx1536m`, `reactNativeArchitectures=arm64-v8a`, PNG crunch off.
+- **`apps/mobile/scripts/build-android-release.sh`** (commité) : réapplique ces props (effacées par `prebuild`), `-x lintVitalRelease` (que `-x lint` ne saute pas), `--build-cache`, `open -R`.
+- **Mesuré** : rebuild sans changement **45 s** (vs ~19 min). Attendu ~2-4 min pour un vrai changement JS, ~10-15 min pour `--clean`.
+- Itérer sur le JS sans rebuild : `pnpm mobile` (Metro) + APK installé.
 
 ### Bascule automatique modèle Gemini (quota) ✅ (2026-09-02)
 

@@ -91,7 +91,7 @@ export ANDROID_HOME=~/Library/Android/sdk \
 ./gradlew :app:assembleRelease -x lint -PreactNativeArchitectures=arm64-v8a --console=plain
 # → app/build/outputs/apk/release/app-release.apk  (~52 Mo arm64 seul)
 ```
-Temps de build (daemon Gradle **chaud**, après la 1re exécution qui le démarre) : **~10-15 min à froid** (`--clean` ou nouveau module natif) ; **quelques min en incrémental** JS/assets ; **~1 min** si rien n'a bougé. Sans daemon (l'ancien réglage) c'était +10-15 min à chaque fois. Ne pas supprimer `~/.gradle`, le NDK, ni `apps/mobile/android/{.gradle,build,app/build}` entre deux builds (cf. [[build-cache-protection]]). L'APK (~52 Mo) dépasse la limite d'upload du chat (30 Mo) → `open -R` (le script le fait).
+Temps de build **mesuré 2026-09-02** avec le script : **45 s** pour un rebuild où rien n'a changé (`compileReleaseKotlin` UP-TO-DATE, lintVital sauté, 25/337 tâches) — vs **~19 min** juste avant, même état, avec `daemon=false` + lintVital. Attendu : **~2-4 min** pour un vrai changement JS/assets (rebundle Metro + hermesc) ; **~10-15 min** pour `--clean`/nouveau module natif. Ne pas supprimer `~/.gradle`, le NDK, ni `apps/mobile/android/{.gradle,build,app/build}` entre deux builds (cf. [[build-cache-protection]]). L'APK (~52 Mo) dépasse la limite d'upload du chat (30 Mo) → `open -R` (le script le fait).
 
 **Boucle rapide pour itérer sur le JS** (pas de rebuild APK) : garder l'APK debug/release installé + `pnpm mobile` (Metro) — le JS se recharge à chaud. Le rebuild APK ne sert que pour livrer une version installable autonome.
 NB : `git checkout apps/mobile/package.json` après `prebuild` ne fait que restaurer les scripts `android`/`ios` ; les vraies deps (dont `expo-video`) sont déjà committées.

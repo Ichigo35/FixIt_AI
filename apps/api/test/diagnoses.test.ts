@@ -71,6 +71,38 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(guide.status).toBe(409);
   });
 
+  it('admin : guide accessible malgré forcedStop', async () => {
+    const uid = freshUser();
+    const app = createApp();
+    const e = env({ ADMIN_EMAILS: 'boss@example.com' });
+    const auth = { ...devAuth(uid), 'x-dev-user-email': 'boss@example.com' };
+    const res = await app.request(
+      '/diagnoses',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...auth },
+        body: JSON.stringify({
+          description: 'the mains power cable is damaged and the copper wire is exposed',
+        }),
+      },
+      e,
+    );
+    const body = (await res.json()) as Record<string, any>;
+    expect(body.safety.forcedStop).toBe(true);
+
+    const guide = await app.request(`/diagnoses/${body.id}/repair-guide`, { headers: auth }, e);
+    expect(guide.status).toBe(200);
+    const g = (await guide.json()) as any;
+    expect(g.steps.length).toBeGreaterThan(0);
+
+    const session = await app.request(
+      `/diagnoses/${body.id}/repair-session`,
+      { method: 'POST', headers: auth },
+      e,
+    );
+    expect(session.status).toBe(201);
+  });
+
   it('quota FREE : 4e diagnostic -> 429', async () => {
     const uid = freshUser();
     const app = createApp();

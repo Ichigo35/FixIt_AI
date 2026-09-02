@@ -233,6 +233,16 @@ OAuth GitHub/Apple = plus tard.
 - 89 tests (test admin : 5 diagnostics d'affilée en 201, `quota.used` reste 0).
 - **Reste** : `pnpm --filter @fixit/api run deploy` pour propager la var `ADMIN_EMAILS` en prod (bloqué côté agent, à lancer manuellement).
 
+### Admin — override guide + « More info » ✅ (2026-09-02)
+
+- **Guide déverrouillé pour un admin même sur un STOP de sécurité** : `GET /diagnoses/:id/repair-guide`, `POST …/repair-session` et `…/verify` ne renvoient plus 409 `forced_stop` / `session_unavailable` si `isAdminEmail(env, userEmail)`. Le guide est généré avec `RepairGuideInput.adminOverride` → prompt renforcé (tous les dangers dans `generalWarnings`, `safetyWarning` par étape, étape 1 = mise en sécurité complète).
+- **Mobile** : `MeProvider` / `useMe()` (`src/lib/me.tsx`, wrap dans `_layout.tsx`) expose `me` / `isAdmin` / `unlimited` / `refresh` — l'accueil le consomme (fin du `getMe` local).
+  - `DiagnosisResultView` : reco « professionnel » → bouton actif pour un admin (« Open repair guide (override) ») + carte « ⚠️ ADMIN OVERRIDE ». Non-admin : bouton désactivé comme avant.
+  - `StopView` : carte « ⚠️ ADMIN OVERRIDE » + bouton « Open repair guide anyway » (admin uniquement). Tous les avertissements de danger restent affichés.
+- **« ADD MORE DETAILS »** : nouveau composant `RefineDiagnosis` (dans `DiagnosisResultView` **et** `StopView`) — champ texte libre + « Re-analyze with these details » → relance `/diagnosis/new` (description d'origine + précisions concaténées, mêmes `imageIds`/`videoIds`). Crée un nouveau diagnostic (non consommé pour un accès illimité).
+- **100 tests** (34 shared + 38 api + 28 mobile). Nouveau test api : « admin : guide accessible malgré forcedStop » (guide 200 + repair-session 201).
+- **Reste** : redéployer le Worker (`pnpm --filter @fixit/api run deploy`) pour que l'override admin fonctionne sur l'APK (qui pointe sur la prod).
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

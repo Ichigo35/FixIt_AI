@@ -80,6 +80,16 @@ export function buildRepairGuidePrompt(input: RepairGuideInput): string {
   if (d.tools.length) lines.push(`Tools already suggested: ${d.tools.join(', ')}`);
   if (d.parts.length) lines.push(`Parts already suggested: ${d.parts.map((p) => p.name).join(', ')}`);
   if (input.description?.trim()) lines.push(`User's own words: "${input.description.trim()}"`);
+  if (input.adminOverride) {
+    lines.push(
+      'IMPORTANT: this item was flagged as professional-only because of a safety hazard, ' +
+        'and an authorised operator has explicitly overridden that block. Still write the full ' +
+        'guide, but be especially thorough: put every relevant hazard in "generalWarnings", add ' +
+        'an explicit "safetyWarning" to every step that carries any risk, and make step 1 a ' +
+        'complete make-it-safe procedure (isolate mains/gas/water, discharge stored energy, ' +
+        'wait for cooling, use PPE).',
+    );
+  }
   return lines.join('\n');
 }
 

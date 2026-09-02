@@ -20,6 +20,8 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 - **Clé Gemini** : fournie par l'utilisateur, stockée dans `.dev.vars` (gitignore) + secret Worker. Jamais committée, jamais en clair dans la mémoire.
 - **Sécurité applicative** : `SafetyClassifier` + `RepairabilityScore` déterministes dans `packages/shared`, autorité **côté serveur uniquement** ; le classifier ne peut que durcir la reco IA.
 - **Rôle admin / accès illimité** : colonne `app_users.role` (`user`|`admin`, migration `0002`). Var `ADMIN_EMAILS` (liste d'emails, `wrangler.toml [vars]` + `.dev.vars`) → `apps/api/src/auth/admin.ts`. `ensureUser` synchronise `role` à chaque `/me` / `POST /diagnoses`. `getQuota`/`consumeQuota` : `admin` (ou `plan=premium`) ⇒ limite `Infinity`, quota **jamais** consommé. `/me` renvoie `role`. `tcha.jimmy@gmail.com` promu `admin` en base. Abonnement (`plan`) pour les autres profils = à faire.
+  - **Override guide (2026-09-02)** : un admin obtient le guide de réparation **même sur un STOP de sécurité** (`repair-guide` / `repair-session` / `verify` ne renvoient plus 409 `forced_stop` si `isAdminEmail`). Le guide est généré avec `RepairGuideInput.adminOverride` → prompt renforcé (dangers dans `generalWarnings`, `safetyWarning` par étape, étape 1 = mise en sécurité). Mobile : `MeProvider`/`useMe()` (`src/lib/me.tsx`, wrap `_layout.tsx`) → `isAdmin` ; `DiagnosisResultView` + `StopView` affichent une carte « ⚠️ ADMIN OVERRIDE » + bouton d'ouverture du guide (admin only ; les avertissements de danger restent affichés). Non-admin : comportement inchangé (bouton désactivé / écran STOP sans guide).
+  - **« ADD MORE DETAILS »** : composant `RefineDiagnosis` (dans `DiagnosisResultView` **et** `StopView`) — champ libre → relance `/diagnosis/new` (description d'origine + précisions concaténées, mêmes `imageIds`/`videoIds`) ⇒ nouveau diagnostic (non consommé pour un accès illimité).
 - **Isolation par utilisateur** : filtrage explicite `WHERE user_id =` dans chaque requête du Worker + tests d'intégration d'isolation. **RLS Postgres écartée** (driver `neon-http` sans transaction → pas de GUC par requête ; tous les rôles Neon ont `BYPASSRLS` non retirable).
 - **Durcissement Worker** : `secureHeaders`, `bodyLimit`, rate limiting Cloudflare `[[ratelimits]]`.
 
@@ -43,11 +45,12 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 - **Storage** : R2 → **Neon Object Storage** (S3, `aws4fetch`), abstraction `apps/api/src/storage/`.
 - **Déploiement** : **Worker prod live** `https://fixit-ai-api.ichigo35.workers.dev` — `APP_ENV=production`, 4 secrets, `/health` OK, E2E authentifié (upload/get/403/delete) vérifié en prod.
 - **Sécurité** : `secureHeaders` + `bodyLimit` + rate limiting Cloudflare. RLS écartée (voir Décisions).
-- **99 tests** (34 shared + 37 api + 28 mobile). Base Neon : 1 user (`tcha.jimmy@gmail.com`, admin). Dép. mobile ajoutée : `expo-video` (~57.0.3, plugin dans `app.config.ts`).
+- **100 tests** (34 shared + 38 api + 28 mobile). Base Neon : 1 user (`tcha.jimmy@gmail.com`, admin). Dép. mobile ajoutée : `expo-video` (~57.0.3, plugin dans `app.config.ts`).
 
 **À faire :** tester vidéo end-to-end sur device (File API réelle + lecture `expo-video`) · système d'abonnement `plan` FREE/PREMIUM pour les non-admins · EAS Build · i18n sur les écrans restants (`DiagnosisResultView`/`StopView`/`OutcomeSession`/`RepairGuideView` + `lib/errors.ts`) · domaine custom = abandonné.
 
 **Prod à jour :** Worker version `40c1fbcc` (2026-09-02) — `ADMIN_EMAILS` + pipeline vidéo (PHASE 9) + `/auth/callback` + **pages légales publiques `/` `/privacy` `/terms`** (pour l'écran de consentement Google, désormais publié). `/health` OK.
+⚠️ **À redéployer** : l'override guide admin (`repair-guide`/`repair-session`/`verify` sans 409 `forced_stop` pour un admin) est mergé mais **pas encore en prod** — lancer `pnpm --filter @fixit/api run deploy` (bloqué côté agent).
 
 ## Infra provisionnée
 

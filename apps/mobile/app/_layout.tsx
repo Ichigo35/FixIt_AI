@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
 import { ErrorBoundary, LoadingState, OfflineBanner } from '@/components';
 import { ConnectivityProvider } from '@/lib/connectivity';
+import { MeProvider } from '@/lib/me';
 import { OutboxProvider } from '@/lib/outbox';
 import { OnboardingProvider, useOnboarding } from '@/lib/onboarding';
 import { ThemeProvider, useTheme } from '@/theme';
@@ -82,7 +83,9 @@ export default function RootLayout() {
             <OutboxProvider>
               <OnboardingProvider>
                 <AuthProvider>
-                  <RootStack />
+                  <MeProvider>
+                    <RootStack />
+                  </MeProvider>
                 </AuthProvider>
               </OnboardingProvider>
             </OutboxProvider>

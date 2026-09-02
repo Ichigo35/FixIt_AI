@@ -27,6 +27,12 @@ export interface RepairGuideInput {
   description?: string;
   brand?: string | null;
   model?: string | null;
+  /**
+   * `true` quand un administrateur force la génération d'un guide alors que la
+   * classification de sécurité imposait un STOP. Le guide est produit malgré tout
+   * mais avec des avertissements de sécurité renforcés.
+   */
+  adminOverride?: boolean;
 }
 
 export interface VerifyStepInput {

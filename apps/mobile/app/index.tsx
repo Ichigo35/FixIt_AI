@@ -1,10 +1,10 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
-import { getMe, type Me } from '@/api/me';
 import { useAuth } from '@/auth/AuthProvider';
 import { Card, FadeInView, Screen, Text } from '@/components';
 import { t } from '@/i18n';
+import { useMe } from '@/lib/me';
 import { useTheme } from '@/theme';
 
 interface Action {
@@ -50,22 +50,14 @@ export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { signOut } = useAuth();
-  const [me, setMe] = useState<Me | null>(null);
+  const { me, unlimited, refresh } = useMe();
 
   useFocusEffect(
     useCallback(() => {
-      let alive = true;
-      getMe()
-        .then((v) => alive && setMe(v))
-        .catch(() => alive && setMe(null));
-      return () => {
-        alive = false;
-      };
-    }, []),
+      refresh();
+    }, [refresh]),
   );
 
-  const unlimited =
-    !!me && (me.role === 'admin' || me.plan === 'premium' || !Number.isFinite(me.quota.limit));
   const quotaLine = !me
     ? null
     : unlimited

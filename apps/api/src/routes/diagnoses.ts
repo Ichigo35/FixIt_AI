@@ -213,7 +213,10 @@ diagnoses.get('/:id/repair-guide', rateLimit('DIAGNOSE_RL'), async (c) => {
 
   const diagnosis = await getDiagnosis(db, userId, id);
   if (!diagnosis) return c.json({ error: 'not_found' }, 404);
-  if (diagnosis.safety.forcedStop) {
+  // Un administrateur (ADMIN_EMAILS) a accès au guide même sur un STOP de sécurité.
+  const admin = isAdminEmail(c.env, c.get('userEmail'));
+  const overrideStop = diagnosis.safety.forcedStop && admin;
+  if (diagnosis.safety.forcedStop && !admin) {
     return c.json({ error: 'guide_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
   }
 
@@ -229,6 +232,7 @@ diagnoses.get('/:id/repair-guide', rateLimit('DIAGNOSE_RL'), async (c) => {
       description: diagnosis.input.description,
       brand: diagnosis.input.brand,
       model: diagnosis.input.model,
+      adminOverride: overrideStop,
     });
   } catch (err) {
     if (err instanceof AIProviderError) {
@@ -266,7 +270,7 @@ diagnoses.post('/:id/repair-session', async (c) => {
 
   const diagnosis = await getDiagnosis(db, userId, id);
   if (!diagnosis) return c.json({ error: 'not_found' }, 404);
-  if (diagnosis.safety.forcedStop) {
+  if (diagnosis.safety.forcedStop && !isAdminEmail(c.env, c.get('userEmail'))) {
     return c.json({ error: 'session_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
   }
   const guide = await getRepairGuide(db, id);
@@ -284,7 +288,7 @@ diagnoses.post('/:id/repair-session/verify', rateLimit('DIAGNOSE_RL'), async (c)
 
   const diagnosis = await getDiagnosis(db, userId, id);
   if (!diagnosis) return c.json({ error: 'not_found' }, 404);
-  if (diagnosis.safety.forcedStop) {
+  if (diagnosis.safety.forcedStop && !isAdminEmail(c.env, c.get('userEmail'))) {
     return c.json({ error: 'session_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
   }
 

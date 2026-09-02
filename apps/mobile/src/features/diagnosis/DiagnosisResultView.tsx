@@ -11,8 +11,10 @@ import {
   Text,
 } from '@/components';
 import { haptics } from '@/lib/haptics';
+import { useMe } from '@/lib/me';
 import { useTheme } from '@/theme';
 import { DiagnosisMedia } from './DiagnosisMedia';
+import { RefineDiagnosis } from './RefineDiagnosis';
 import { RepairabilityMeter } from './RepairabilityMeter';
 
 function formatCost(cost: DiagnosisResult['diagnosis']['estimatedCost']): string {
@@ -31,9 +33,17 @@ function formatTime(min?: number | null): string {
 export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
   const theme = useTheme();
   const router = useRouter();
+  const { isAdmin } = useMe();
   const { diagnosis, safety, repairability } = result;
   const isPro = safety.recommendation === 'PROFESSIONAL';
+  // Un admin peut ouvrir le guide malgré une reco « professionnel » (le serveur l'autorise aussi).
+  const proBlocked = isPro && !isAdmin;
   const rec = RECOMMENDATION_META[safety.recommendation];
+
+  const openGuide = () => {
+    haptics.impact();
+    router.push({ pathname: '/repair/[id]', params: { id: result.id } });
+  };
 
   return (
     <View style={{ gap: theme.spacing.lg }}>
@@ -128,14 +138,33 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
         </FadeInView>
       ) : null}
 
+      <FadeInView delay={320}>
+        <RefineDiagnosis result={result} />
+      </FadeInView>
+
+      {isPro && isAdmin ? (
+        <Card style={{ borderColor: theme.colors.caution }}>
+          <Text variant="caption" color={theme.colors.caution}>
+            ⚠️ ADMIN OVERRIDE
+          </Text>
+          <Text muted>
+            This repair is normally professional-only. The guide is unlocked for your account —
+            follow every safety warning and stop if anything looks unsafe.
+          </Text>
+        </Card>
+      ) : null}
+
       <Button
-        label={isPro ? 'Repair guide not recommended' : 'Start Repair'}
-        icon={isPro ? '⚠️' : '🛠️'}
-        disabled={isPro}
-        onPress={() => {
-          haptics.impact();
-          router.push({ pathname: '/repair/[id]', params: { id: result.id } });
-        }}
+        label={
+          proBlocked
+            ? 'Repair guide not recommended'
+            : isPro
+              ? 'Open repair guide (override)'
+              : 'Start Repair'
+        }
+        icon={proBlocked ? '⚠️' : '🛠️'}
+        disabled={proBlocked}
+        onPress={openGuide}
       />
       <Button label="Back to home" variant="ghost" onPress={() => router.replace('/')} />
     </View>

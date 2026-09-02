@@ -199,7 +199,8 @@ OAuth GitHub/Apple = plus tard.
 - ✅ **API** : `getDiagnosis` (`apps/api/src/db/repos.ts`) renvoie désormais `input.imageIds` / `input.videoIds` = **l'id d'upload** (suffixe de `r2Key`), utilisable tel quel par `GET /uploads/:id`. Avant : l'id de ligne `diagnosis_images` (cassait la vignette « avant » d'`OutcomeSection`). Assertion ajoutée au test `avec image`.
 - ✅ **Dép. ajoutée** : `expo-video` (~57.0.3) — `apps/mobile/package.json` + plugin dans `app.config.ts`. `expo install` a été SIGKILL en cours (mémoire) → dép. ajoutée à la main, lockfile déjà cohérent.
 - ✅ 99 tests (34 shared + 37 api + 28 mobile), typecheck + lint OK.
-- ⏳ **Lecture vidéo non testée sur device** (composant natif `expo-video`) — à vérifier avec le prochain APK.
+- ✅ **APK release rebuildé** (2026-09-02, `ai.fixit.app` v0.1.0, ~52 Mo arm64, signé clé debug). Build ~15 min à froid (`--clean` + `expo-video` = nouveau module natif). Trop gros pour l'upload chat (30 Mo) → Finder.
+- ⏳ **Lecture vidéo non testée sur device** (composant natif `expo-video`) — à vérifier avec cet APK.
 
 ## Sécurité — durcissement ✅ (2026-09-01)
 

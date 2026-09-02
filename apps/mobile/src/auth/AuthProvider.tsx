@@ -10,7 +10,10 @@ import {
   type ReactNode,
 } from 'react';
 import { authBridge } from '@/api/client';
-import { signInWithGoogle as oauthSignInWithGoogle } from './oauth';
+import {
+  resolveGoogleRedirect,
+  signInWithGoogle as oauthSignInWithGoogle,
+} from './oauth';
 import {
   refreshAccessToken,
   signIn as stackSignIn,
@@ -27,6 +30,8 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  /** Termine un rebond OAuth reçu en deep link (`fixitai://oauth?...`). */
+  completeGoogleRedirect: (url: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -103,6 +108,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await persist(await oauthSignInWithGoogle());
   }, [persist]);
 
+  const completeGoogleRedirect = useCallback(
+    async (url: string) => {
+      const next = await resolveGoogleRedirect(url);
+      if (next) await persist(next);
+    },
+    [persist],
+  );
+
   const signOut = useCallback(async () => {
     const current = sessionRef.current;
     if (current) await signOutStack(current.refreshToken);
@@ -110,8 +123,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persist]);
 
   const value = useMemo<AuthState>(
-    () => ({ status, session, signIn, signUp, signInWithGoogle, signOut }),
-    [status, session, signIn, signUp, signInWithGoogle, signOut],
+    () => ({
+      status,
+      session,
+      signIn,
+      signUp,
+      signInWithGoogle,
+      completeGoogleRedirect,
+      signOut,
+    }),
+    [status, session, signIn, signUp, signInWithGoogle, completeGoogleRedirect, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

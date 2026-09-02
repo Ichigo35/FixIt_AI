@@ -169,8 +169,16 @@ Diagnostic à partir d'un **court clip** (~15 s) — mouvement + son + pannes in
 - ✅ **`eas.json`** (profils development/preview/production, `EXPO_PUBLIC_APP_ENV=production`).
 - ✅ **APK release Android buildé en local** (`expo prebuild` + `./gradlew :app:assembleRelease`). Fixes en passant : `pnpm-workspace.yaml` (`nodeLinker: hoisted` — pnpm 11 ignore `.npmrc`), NDK r27b installé manuellement. Détail dans `CLAUDE.md` § Build mobile.
 - ✅ **Fix « Unmatched Route » (2026-09-02)** : sur Android le navigateur ouvre le deep link `fixitai://oauth?code=…` au lieu de rendre la main à `openAuthSessionAsync`. Route `app/oauth.tsx` ajoutée → `completeGoogleSignIn(url)` termine l'échange (idempotent : deep link OU retour navigateur, grâce 4 s après cancel/dismiss). `'oauth'` joignable déconnecté dans le garde `_layout.tsx`.
+- ✅ **Fix « retour Google → écran de login » (2026-09-02)** : sur Android le navigateur système est un processus séparé → l'app peut être **recréée** pendant le choix du compte Google, donc l'objet `pending` (verifier/state en mémoire) disparaît et l'échange du code échouait silencieusement → retour à `/auth`.
+  - `verifier` + `state` désormais **persistés dans SecureStore** (`fixit.oauth.pending.v1`) au lancement du flux.
+  - `oauth.ts` : nouveau `resolveGoogleRedirect(url)` qui termine l'échange **à chaud** (promesse en mémoire) **ou à froid** (relit SecureStore) et **renvoie la session** ; cache d'échange par `code` (usage unique garanti même si deep link + `openAuthSessionAsync` reviennent tous les deux).
+  - `AuthProvider.completeGoogleRedirect(url)` : la route `app/oauth.tsx` persiste la session elle-même, sans dépendre de la promesse de `signInWithGoogle` ni du timer (relevé 4 s → 12 s, ne rejette plus que la promesse en mémoire).
+  - Worker `/auth/callback` : bouton de repli agrandi (tap = geste utilisateur, seule redirection fiable vers `fixitai://` dans Chrome Custom Tabs ; la CSP `default-src 'none'` interdit tout `<script>` inline).
+  - **93 tests toujours verts**, typecheck + lint OK. **APK release rebuildé** (`app-release.apk`).
 
-**Reste (prod)** : publier l'écran de consentement Google (hors mode *Testing*) ; revérifier le flux OAuth end-to-end sur device avec la route ; OAuth GitHub/Apple = plus tard.
+- ✅ **Worker redéployé** (2026-09-02, version `a65c7f6c`) — nouveau `/auth/callback`, `/health` OK.
+
+**Reste (prod)** : publier l'écran de consentement Google (hors mode *Testing*) — **sinon Google bloque tout compte non listé comme *test user*** ; revérifier le flux OAuth end-to-end sur device avec le nouvel APK ; OAuth GitHub/Apple = plus tard.
 
 ## Sécurité — durcissement ✅ (2026-09-01)
 

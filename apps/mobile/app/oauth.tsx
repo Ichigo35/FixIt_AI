@@ -1,13 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { completeGoogleSignIn } from '@/auth/oauth';
+import { useAuth } from '@/auth/AuthProvider';
 import { LoadingState, Screen } from '@/components';
 import { t } from '@/i18n';
 
 /**
  * Cible du rebond OAuth (`fixitai://oauth?code=...&state=...`). Sur Android, le
  * navigateur système ouvre ce deep link plutôt que de rendre la main à
- * `openAuthSessionAsync` ; cette route termine alors l'échange du code.
+ * `openAuthSessionAsync` ; cette route termine alors l'échange du code et
+ * persiste la session (y compris quand l'app a été recréée entre-temps).
  */
 export default function OAuthRedirect() {
   const params = useLocalSearchParams<{
@@ -17,6 +18,7 @@ export default function OAuthRedirect() {
     error_description?: string;
   }>();
   const router = useRouter();
+  const { completeGoogleRedirect } = useAuth();
   const handled = useRef(false);
 
   useEffect(() => {
@@ -29,12 +31,14 @@ export default function OAuthRedirect() {
       if (typeof v === 'string' && v) qs.set(key, v);
     }
 
-    void completeGoogleSignIn(`fixitai://oauth?${qs.toString()}`).finally(() => {
-      // Le garde de navigation (`app/_layout.tsx`) redirige vers `/` ou `/auth`
-      // selon l'état d'authentification résultant.
-      router.replace('/');
-    });
-  }, [params, router]);
+    completeGoogleRedirect(`fixitai://oauth?${qs.toString()}`)
+      .catch(() => undefined)
+      .finally(() => {
+        // Le garde de navigation (`app/_layout.tsx`) redirige vers `/` ou `/auth`
+        // selon l'état d'authentification résultant.
+        router.replace('/');
+      });
+  }, [params, router, completeGoogleRedirect]);
 
   return (
     <Screen>

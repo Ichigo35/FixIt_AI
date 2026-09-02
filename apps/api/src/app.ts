@@ -52,13 +52,23 @@ export function createApp() {
       if (v) passthrough.set(k, v);
     }
     const target = `fixitai://oauth?${passthrough.toString()}`;
-    const safeTarget = target.replace(/[<>"]/g, encodeURIComponent);
+    const attr = target.replace(/[<>"]/g, encodeURIComponent);
+    // `meta refresh` = seul mécanisme de redirection non bloqué par la CSP
+    // `default-src 'none'` de l'API (inline <script>/on* handlers interdits).
+    // Le gros bouton est le repli fiable : un tap = geste utilisateur, toujours
+    // autorisé par Chrome Custom Tabs pour ouvrir le schéma `fixitai://`.
     return c.html(
-      `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">` +
-        `<meta http-equiv="refresh" content="0;url=${safeTarget}">` +
+      `<!doctype html><html><head><meta charset="utf-8">` +
+        `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+        `<meta http-equiv="refresh" content="0;url=${attr}">` +
         `<title>Signing you in…</title>` +
-        `<p style="font-family:system-ui;text-align:center;padding:3rem">` +
-        `Signing you in… <a href="${safeTarget}">Return to FixIt AI</a></p>`,
+        `<style>body{font-family:system-ui,-apple-system,sans-serif;text-align:center;` +
+        `padding:3rem 1.5rem;color:#0B1120}a.btn{display:inline-block;margin-top:1.5rem;` +
+        `padding:1rem 1.75rem;background:#2563EB;color:#fff;border-radius:.75rem;` +
+        `text-decoration:none;font-weight:600;font-size:1.05rem}</style></head><body>` +
+        `<p>Signing you in…</p>` +
+        `<a class="btn" href="${attr}">Return to FixIt AI</a>` +
+        `</body></html>`,
     );
   });
 

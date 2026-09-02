@@ -73,10 +73,13 @@ Port API dev = **8788** (8787 occupé par un autre projet local de l'utilisateur
 Build APK release (signé avec la clé debug → installable, JS bundlé) :
 ```
 cd apps/mobile && npx expo prebuild --platform android --clean --no-install
+git checkout apps/mobile/package.json   # prebuild remplace les scripts android/ios par `expo run:*`
 cd android
-export ANDROID_HOME=~/Library/Android/sdk JAVA_HOME=<openjdk17> EXPO_PUBLIC_APP_ENV=production
-./gradlew :app:assembleRelease -x lint
-# → app/build/outputs/apk/release/app-release.apk
+export ANDROID_HOME=~/Library/Android/sdk \
+  JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+  EXPO_PUBLIC_APP_ENV=production
+./gradlew :app:assembleRelease -x lint -PreactNativeArchitectures=arm64-v8a --console=plain
+# → app/build/outputs/apk/release/app-release.apk  (~50 Mo arm64 seul, build ~6 min)
 ```
 APK léger (~arm64 + R8) : dans `android/gradle.properties` poser `reactNativeArchitectures=arm64-v8a`,
 `android.enableMinifyInReleaseBuilds=true`, `android.enableShrinkResourcesInReleaseBuilds=true`.

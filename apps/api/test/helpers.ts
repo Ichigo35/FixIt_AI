@@ -25,6 +25,7 @@ export const baseEnv: Record<string, string | undefined> = {
   APP_ENV: 'test',
   FREE_MONTHLY_DIAGNOSES: '3',
   GEMINI_MODEL: 'gemini-3.6-flash',
+  GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
   DATABASE_URL: process.env.DATABASE_URL ?? devVars.DATABASE_URL,
   STACK_PROJECT_ID: devVars.STACK_PROJECT_ID ?? '3432abc2-2b77-4b7b-acff-0686a7b99697',
   STACK_JWKS_URL:

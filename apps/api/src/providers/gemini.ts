@@ -29,6 +29,17 @@ const API_HOST = 'https://generativelanguage.googleapis.com';
 const API_ROOT = `${API_HOST}/v1beta/models`;
 const FILES_UPLOAD = `${API_HOST}/upload/v1beta/files`;
 
+/**
+ * Extrait le délai conseillé (`RetryInfo.retryDelay`, ex. `"41s"` / `"1.5s"`) du
+ * corps d'erreur Gemini. Renvoie des millisecondes, ou `undefined` si absent.
+ */
+function parseRetryAfterMs(body: string): number | undefined {
+  const m = body.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  if (!m) return undefined;
+  const seconds = Number(m[1]);
+  return Number.isFinite(seconds) ? Math.round(seconds * 1000) : undefined;
+}
+
 function toBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let binary = '';
@@ -111,6 +122,13 @@ export class GeminiProvider implements AIProvider {
     }
     if (!start.ok) {
       const detail = await start.text().catch(() => '');
+      if (start.status === 429) {
+        throw new AIProviderError(
+          'ai_rate_limited',
+          `Gemini Files API quota/rate limit (HTTP 429): ${detail.slice(0, 300)}`,
+          { retryAfterMs: parseRetryAfterMs(detail) },
+        );
+      }
       throw new AIProviderError('ai_request_failed', `Gemini upload start HTTP ${start.status}: ${detail.slice(0, 300)}`);
     }
     const uploadUrl = start.headers.get('x-goog-upload-url');
@@ -241,6 +259,13 @@ export class GeminiProvider implements AIProvider {
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
+      if (res.status === 429) {
+        throw new AIProviderError(
+          'ai_rate_limited',
+          `Gemini ${this.model} quota/rate limit (HTTP 429): ${detail.slice(0, 300)}`,
+          { retryAfterMs: parseRetryAfterMs(detail) },
+        );
+      }
       throw new AIProviderError('ai_request_failed', `Gemini HTTP ${res.status}: ${detail.slice(0, 300)}`);
     }
 

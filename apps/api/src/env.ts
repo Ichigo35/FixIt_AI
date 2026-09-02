@@ -6,6 +6,8 @@ export interface Env {
   APP_ENV: string;
   FREE_MONTHLY_DIAGNOSES: string;
   GEMINI_MODEL: string;
+  /** Modèle Gemini de repli quand `GEMINI_MODEL` atteint sa limite (défaut `gemini-3.5-flash`). */
+  GEMINI_FALLBACK_MODEL?: string;
   /** Emails (séparés par des virgules) promus administrateurs : accès illimité. */
   ADMIN_EMAILS?: string;
 

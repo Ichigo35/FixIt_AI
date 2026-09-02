@@ -106,7 +106,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     if (err instanceof AIProviderError) {
       return c.json(
         { error: err.code, message: err.message },
-        err.code === 'ai_request_failed' ? 502 : 422,
+        err.code === 'ai_request_failed' ? 502 : err.code === 'ai_rate_limited' ? 429 : 422,
       );
     }
     throw err;
@@ -238,7 +238,7 @@ diagnoses.get('/:id/repair-guide', rateLimit('DIAGNOSE_RL'), async (c) => {
     if (err instanceof AIProviderError) {
       return c.json(
         { error: err.code, message: err.message },
-        err.code === 'ai_request_failed' ? 502 : 422,
+        err.code === 'ai_request_failed' ? 502 : err.code === 'ai_rate_limited' ? 429 : 422,
       );
     }
     throw err;
@@ -331,7 +331,7 @@ diagnoses.post('/:id/repair-session/verify', rateLimit('DIAGNOSE_RL'), async (c)
     if (err instanceof AIProviderError) {
       return c.json(
         { error: err.code, message: err.message },
-        err.code === 'ai_request_failed' ? 502 : 422,
+        err.code === 'ai_request_failed' ? 502 : err.code === 'ai_rate_limited' ? 429 : 422,
       );
     }
     throw err;

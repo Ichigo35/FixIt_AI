@@ -253,6 +253,14 @@ OAuth GitHub/Apple = plus tard.
 - **110 tests** (44 shared + 38 api + 28 mobile) — `packages/shared/test/icons.test.ts` (mapping FR/EN, replis, ids valides). Metro `expo export` android OK (41 assets bundlés).
 - **Reste** : rebâtir l'APK release pour voir le rendu sur device (JS bundlé seulement, pas de build natif requis) ; parité i18n non concernée (RepairGuideView encore en EN codé en dur).
 
+### Bascule automatique modèle Gemini (quota) ✅ (2026-09-02)
+
+- **`FailoverGeminiProvider`** (`apps/api/src/providers/geminiFailover.ts`) : modèle préféré `GEMINI_MODEL` (`gemini-3.6-flash`) → sur **HTTP 429** (`RESOURCE_EXHAUSTED`), mise « en repos » du modèle (`RetryInfo.retryDelay` du corps, sinon 60 s, plafond 1 h) + bascule sur `GEMINI_FALLBACK_MODEL` (`gemini-3.5-flash`). Repos écoulé ⇒ retour automatique au modèle préféré (aucune intervention). État `Map` module-level (par isolate Worker, best-effort comme le rate limiting Cloudflare).
+- `GeminiProvider.call` + `uploadAndWaitVideo` : 429 → `AIProviderError('ai_rate_limited', { retryAfterMs })` ; route `diagnoses` mappe `ai_rate_limited` → **429**. Tous les modèles en 429 ⇒ `ai_rate_limited`.
+- Vars ajoutées : `GEMINI_FALLBACK_MODEL` (`env.ts`, `wrangler.toml [vars]`, `.dev.vars`, `test/helpers.ts`). **Aucun nouveau secret** (même clé). Les 2 ids validés dispo sur la clé (`GET /v1beta/models`).
+- **116 tests** (44 shared + **44 api** + 28 mobile) — `apps/api/test/geminiFailover.test.ts` (6 tests : `fetch` mocké + fake timers ; bascule, repos/reprise, repos par défaut, tous 429, non-429 sans bascule, 1 seul modèle).
+- **Reste** : `pnpm --filter @fixit/api run deploy` pour propager `GEMINI_FALLBACK_MODEL` en prod (à lancer par l'utilisateur).
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

@@ -55,12 +55,24 @@ export interface AIProvider {
   verifyStep(input: VerifyStepInput): Promise<RawStepCheck>;
 }
 
+export type AIProviderErrorCode =
+  | 'ai_unavailable'
+  | 'ai_bad_output'
+  | 'ai_request_failed'
+  /** Quota/limite de débit atteint (HTTP 429) — un autre modèle peut prendre le relais. */
+  | 'ai_rate_limited';
+
 export class AIProviderError extends Error {
+  /** Délai conseillé avant de réessayer ce modèle (issu du corps `RetryInfo`), en ms. */
+  readonly retryAfterMs?: number;
+
   constructor(
-    public code: 'ai_unavailable' | 'ai_bad_output' | 'ai_request_failed',
+    public code: AIProviderErrorCode,
     message: string,
+    opts?: { retryAfterMs?: number },
   ) {
     super(message);
     this.name = 'AIProviderError';
+    this.retryAfterMs = opts?.retryAfterMs;
   }
 }

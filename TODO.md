@@ -241,7 +241,7 @@ OAuth GitHub/Apple = plus tard.
   - `StopView` : carte « ⚠️ ADMIN OVERRIDE » + bouton « Open repair guide anyway » (admin uniquement). Tous les avertissements de danger restent affichés.
 - **« ADD MORE DETAILS »** : nouveau composant `RefineDiagnosis` (dans `DiagnosisResultView` **et** `StopView`) — champ texte libre + « Re-analyze with these details » → relance `/diagnosis/new` (description d'origine + précisions concaténées, mêmes `imageIds`/`videoIds`). Crée un nouveau diagnostic (non consommé pour un accès illimité).
 - **100 tests** (34 shared + 38 api + 28 mobile). Nouveau test api : « admin : guide accessible malgré forcedStop » (guide 200 + repair-session 201).
-- **Reste** : redéployer le Worker (`pnpm --filter @fixit/api run deploy`) pour que l'override admin fonctionne sur l'APK (qui pointe sur la prod).
+- ✅ **Worker déployé** (version `7444aa66`, 2026-09-02, `/health` OK) + **APK release rebuildé** (2026-09-02 20:03).
 
 ## Déploiement Cloudflare ✅ (2026-09-01)
 

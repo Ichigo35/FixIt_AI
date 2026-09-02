@@ -1,8 +1,17 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import type { Part, RepairGuide, StepVerdict } from '@fixit/shared';
-import { Button, Card, DifficultyBadge, FadeInView, Screen, Text } from '@/components';
+import { stepIconId, toolIconId, type Part, type RepairGuide, type StepVerdict } from '@fixit/shared';
+import {
+  Button,
+  Card,
+  DifficultyBadge,
+  FadeInView,
+  Screen,
+  StepIcon,
+  Text,
+  ToolIcon,
+} from '@/components';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 import { StepCheck } from './StepCheck';
@@ -15,7 +24,9 @@ function priceLabel(p: Part): string {
     : `${c}${p.priceMin}`;
 }
 
-function List({ title, items }: { title: string; items: string[] }) {
+/** Liste d'outils/consommables : chaque entrée précédée de son icône au trait. */
+function ToolList({ title, items }: { title: string; items: string[] }) {
+  const theme = useTheme();
   if (items.length === 0) return null;
   return (
     <Card>
@@ -23,9 +34,38 @@ function List({ title, items }: { title: string; items: string[] }) {
         {title}
       </Text>
       {items.map((it) => (
-        <Text key={it}>☑ {it}</Text>
+        <View
+          key={it}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}
+        >
+          <ToolIcon id={toolIconId(it)} size={22} />
+          <Text style={{ flex: 1 }}>{it}</Text>
+        </View>
       ))}
     </Card>
+  );
+}
+
+/** Puce compacte « icône + nom d'outil » pour l'en-tête d'une étape. */
+function ToolChip({ name }: { name: string }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: theme.radii.pill,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+      }}
+    >
+      <ToolIcon id={toolIconId(name)} size={16} />
+      <Text variant="caption">{name}</Text>
+    </View>
   );
 }
 
@@ -84,7 +124,7 @@ export function RepairGuideView({
           </Card>
         ) : null}
 
-        <List title="TOOLS" items={guide.tools} />
+        <ToolList title="TOOLS" items={guide.tools} />
         {guide.parts.length > 0 ? (
           <Card>
             <Text variant="caption" muted>
@@ -101,7 +141,7 @@ export function RepairGuideView({
             ))}
           </Card>
         ) : null}
-        <List title="OPTIONAL" items={guide.optional} />
+        <ToolList title="OPTIONAL" items={guide.optional} />
 
         <Button label="Start repair" icon="🛠️" onPress={() => go(0)} />
         <Button label="Back" variant="ghost" onPress={() => router.back()} />
@@ -143,14 +183,28 @@ export function RepairGuideView({
     <Screen scroll>
       <FadeInView key={pos} offset={14}>
         <View style={{ gap: theme.spacing.lg }}>
-          <Text
-            variant="caption"
-            muted
-            accessibilityRole="progressbar"
-            accessibilityLabel={`Step ${pos + 1} of ${guide.steps.length}`}
-          >
-            STEP {pos + 1} / {guide.steps.length}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.colors.primary + (theme.scheme === 'dark' ? '33' : '1A'),
+              }}
+            >
+              <StepIcon id={stepIconId(step)} size={24} />
+            </View>
+            <Text
+              variant="caption"
+              muted
+              accessibilityRole="progressbar"
+              accessibilityLabel={`Step ${pos + 1} of ${guide.steps.length}`}
+            >
+              STEP {pos + 1} / {guide.steps.length}
+            </Text>
+          </View>
           <Text variant="title">{step.title}</Text>
           <Text>{step.instruction}</Text>
         </View>
@@ -171,8 +225,23 @@ export function RepairGuideView({
 
       {step.tools.length > 0 || step.parts.length > 0 ? (
         <Card>
-          {step.tools.length > 0 ? <Text variant="caption" muted>TOOLS: {step.tools.join(', ')}</Text> : null}
-          {step.parts.length > 0 ? <Text variant="caption" muted>PARTS: {step.parts.join(', ')}</Text> : null}
+          {step.tools.length > 0 ? (
+            <View style={{ gap: theme.spacing.sm }}>
+              <Text variant="caption" muted>
+                TOOLS
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+                {step.tools.map((tool) => (
+                  <ToolChip key={tool} name={tool} />
+                ))}
+              </View>
+            </View>
+          ) : null}
+          {step.parts.length > 0 ? (
+            <Text variant="caption" muted>
+              PARTS: {step.parts.join(', ')}
+            </Text>
+          ) : null}
         </Card>
       ) : null}
 

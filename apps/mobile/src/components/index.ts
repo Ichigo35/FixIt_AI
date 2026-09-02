@@ -8,3 +8,4 @@ export * from './FadeInView';
 export * from './ErrorBoundary';
 export * from './Skeleton';
 export * from './OfflineBanner';
+export * from './LineIcon';

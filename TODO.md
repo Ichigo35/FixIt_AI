@@ -243,6 +243,16 @@ OAuth GitHub/Apple = plus tard.
 - **100 tests** (34 shared + 38 api + 28 mobile). Nouveau test api : « admin : guide accessible malgré forcedStop » (guide 200 + repair-session 201).
 - ✅ **Worker déployé** (version `7444aa66`, 2026-09-02, `/health` OK) + **APK release rebuildé** (2026-09-02 20:03).
 
+### Guide de réparation illustré — icônes outils + type d'étape ✅ (2026-09-02)
+
+- **`packages/shared/src/icons.ts`** : deux fonctions **pures** — `toolIconId(name)` (nom d'outil libre FR/EN → id d'icône, repli `toolbox`) et `stepIconId({title,instruction})` (type d'étape : `secure` / `unplug` / `water-off` / `cool-down` / `disassemble` / `unscrew` / `inspect` / `clean` / `measure` / `replace` / `tighten` / `lubricate` / `reassemble` / `test` / `photo`, repli `generic`). Tables de mots-clés ordonnées, texte normalisé (minuscule + sans accent). Exportées via `@fixit/shared`.
+- **Assets** : `apps/mobile/assets/icons/` — 25 icônes outils + 16 icônes d'étape, SVG au trait monochrome 24×24 (26 reprises de **Lucide** ISC + 15 tracées à la main dans le même style, `stroke="currentColor"`).
+- **`apps/mobile/src/components/LineIcon.tsx`** : `<ToolIcon id>` / `<StepIcon id>` — `expo-image` (déjà natif, gère le SVG + `tintColor` dynamique) → **aucun module natif ajouté, aucun rebuild « à froid »**. Map `satisfies Record<…IconId, number>` (complétude garantie au typecheck). `apps/mobile/types/assets.d.ts` déclare `*.svg`.
+- **`RepairGuideView`** : aperçu → chaque entrée `TOOLS` / `OPTIONAL` précédée de son icône ; étape → médaillon d'icône de type dans l'en-tête + ligne `TOOLS` en puces « icône + nom ».
+- **Illustrations d'étape par IA écartées** (choix utilisateur) : pictos génériques par type d'étape, instantané / hors-ligne / gratuit.
+- **110 tests** (44 shared + 38 api + 28 mobile) — `packages/shared/test/icons.test.ts` (mapping FR/EN, replis, ids valides). Metro `expo export` android OK (41 assets bundlés).
+- **Reste** : rebâtir l'APK release pour voir le rendu sur device (JS bundlé seulement, pas de build natif requis) ; parité i18n non concernée (RepairGuideView encore en EN codé en dur).
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

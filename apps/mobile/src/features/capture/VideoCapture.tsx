@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { MAX_VIDEO_DURATION_SECONDS } from '@fixit/shared';
 import { Button, Text } from '@/components';
+import { t } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
@@ -27,7 +28,7 @@ export function VideoCapture({ onRecorded }: { onRecorded: (uri: string) => void
   if (!camPerm || !micPerm) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text muted>Preparing camera…</Text>
+        <Text muted>{t('capture.preparingCamera')}</Text>
       </View>
     );
   }
@@ -35,12 +36,10 @@ export function VideoCapture({ onRecorded }: { onRecorded: (uri: string) => void
   if (!camPerm.granted || !micPerm.granted) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.md }}>
-        <Text variant="heading">Camera and microphone needed</Text>
-        <Text muted>
-          FixIt AI films a short clip so it can see movement and hear the sound of the problem.
-        </Text>
+        <Text variant="heading">{t('capture.camMicNeededTitle')}</Text>
+        <Text muted>{t('capture.camMicNeededBody')}</Text>
         <Button
-          label="Allow camera and microphone"
+          label={t('capture.allowCamMic')}
           onPress={async () => {
             if (!camPerm.granted) await requestCam();
             if (!micPerm.granted) await requestMic();
@@ -97,7 +96,7 @@ export function VideoCapture({ onRecorded }: { onRecorded: (uri: string) => void
             style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.danger }}
           />
           <Text variant="caption">
-            {elapsed}s / {MAX_VIDEO_DURATION_SECONDS}s
+            {t('capture.recElapsed', { elapsed, max: MAX_VIDEO_DURATION_SECONDS })}
           </Text>
         </View>
       ) : null}
@@ -113,7 +112,9 @@ export function VideoCapture({ onRecorded }: { onRecorded: (uri: string) => void
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
+          accessibilityLabel={
+            recording ? t('capture.stopRecording') : t('capture.startRecording')
+          }
           onPress={recording ? stop : start}
           style={{
             width: 72,

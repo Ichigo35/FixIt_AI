@@ -188,13 +188,14 @@ export async function getDiagnosis(
     .where(and(eq(diagnoses.id, id), eq(diagnoses.userId, userId)));
   if (!row) return null;
   const media = await db
-    .select({ id: diagnosisImages.id, r2Key: diagnosisImages.r2Key, kind: diagnosisImages.kind })
+    .select({ r2Key: diagnosisImages.r2Key, kind: diagnosisImages.kind })
     .from(diagnosisImages)
     .where(eq(diagnosisImages.diagnosisId, id));
-  const imageIds = media.filter((m) => m.kind !== 'video').map((m) => m.id);
-  const videoIds = media
-    .filter((m) => m.kind === 'video')
-    .map((m) => m.r2Key.split('/').pop() ?? m.r2Key);
+  // `imageIds` / `videoIds` = l'id d'upload (suffixe de la clé `uploads/{id}`),
+  // directement utilisable par `GET /uploads/:id`. (Pas l'id de ligne `diagnosis_images`.)
+  const uploadId = (r2Key: string) => r2Key.split('/').pop() ?? r2Key;
+  const imageIds = media.filter((m) => m.kind !== 'video').map((m) => uploadId(m.r2Key));
+  const videoIds = media.filter((m) => m.kind === 'video').map((m) => uploadId(m.r2Key));
   return rowToResult(row, imageIds, videoIds);
 }
 

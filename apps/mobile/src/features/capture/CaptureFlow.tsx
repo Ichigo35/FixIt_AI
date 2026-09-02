@@ -6,6 +6,7 @@ import { TextInput, View } from 'react-native';
 import { MAX_VIDEO_DURATION_SECONDS } from '@fixit/shared';
 import { uploadImage, uploadVideo } from '@/api/uploads';
 import { Button, Card, Text } from '@/components';
+import { t } from '@/i18n';
 import { friendlyError } from '@/lib/errors';
 import { useTheme } from '@/theme';
 import { CameraCapture } from './CameraCapture';
@@ -80,7 +81,7 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
         <View style={{ flex: 1, gap: theme.spacing.md }}>
           <VideoCapture onRecorded={setMediaUri} />
           <Button
-            label="Choose a video from library"
+            label={t('capture.chooseVideoLibrary')}
             variant="secondary"
             icon="🎞️"
             onPress={openLibrary}
@@ -90,9 +91,9 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
     }
     return (
       <Card>
-        <Text variant="heading">Pick a photo</Text>
-        <Text muted>Choose a picture of the problem from your library.</Text>
-        <Button label="Open library" icon="🖼️" onPress={openLibrary} />
+        <Text variant="heading">{t('capture.libraryTitle')}</Text>
+        <Text muted>{t('capture.librarySub')}</Text>
+        <Button label={t('capture.openLibrary')} icon="🖼️" onPress={openLibrary} />
       </Card>
     );
   }
@@ -105,9 +106,9 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
             <Text style={{ fontSize: 26 }}>🎬</Text>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="heading">Video ready</Text>
+              <Text variant="heading">{t('capture.videoReady')}</Text>
               <Text variant="caption" muted>
-                FixIt AI will watch it for movement, sound and intermittent faults.
+                {t('capture.videoReadySub')}
               </Text>
             </View>
           </View>
@@ -122,7 +123,13 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         <Button
-          label={isVideo ? 'Record again' : mode === 'camera' ? 'Retake' : 'Choose another'}
+          label={
+            isVideo
+              ? t('capture.recordAgain')
+              : mode === 'camera'
+                ? t('capture.retake')
+                : t('capture.chooseAnother')
+          }
           variant="secondary"
           onPress={() => {
             setMediaUri(null);
@@ -133,7 +140,7 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
       </View>
 
       <View style={{ gap: theme.spacing.sm }}>
-        <Text variant="heading">What happened?</Text>
+        <Text variant="heading">{t('capture.whatHappened')}</Text>
         <Card>
           <TextInput
             value={description}
@@ -141,8 +148,8 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
             multiline
             placeholder={
               isVideo
-                ? 'e.g. It makes this grinding noise every time it starts to spin.'
-                : 'e.g. Water is leaking from underneath when it spins.'
+                ? t('capture.descPlaceholderVideo')
+                : t('capture.descPlaceholderPhoto')
             }
             placeholderTextColor={theme.colors.textMuted}
             style={{
@@ -155,7 +162,12 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
         </Card>
       </View>
 
-      <Button label="Analyze" icon="🔍" loading={status === 'uploading'} onPress={analyze} />
+      <Button
+        label={t('capture.analyze')}
+        icon="🔍"
+        loading={status === 'uploading'}
+        onPress={analyze}
+      />
 
       {error ? (
         <Text variant="caption" color={theme.colors.danger} center>

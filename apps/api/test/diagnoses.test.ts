@@ -223,6 +223,15 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     ).json()) as { id: string };
     const res = await post(app, { description: 'fridge not cooling', imageIds: [up.id] }, e, uid);
     expect(res.status).toBe(201);
+    const body = (await res.json()) as Record<string, any>;
+
+    // GET /:id renvoie l'id d'upload (utilisable par GET /uploads/:id), pas l'id de ligne.
+    const detail = (await (
+      await app.request(`/diagnoses/${body.id}`, { headers: devAuth(uid) }, e)
+    ).json()) as Record<string, any>;
+    expect(detail.input.imageIds).toEqual([up.id]);
+    const media = await app.request(`/uploads/${detail.input.imageIds[0]}`, { headers: devAuth(uid) }, e);
+    expect(media.status).toBe(200);
   });
 
   it('avec vidéo : upload puis diagnostic, videoIds persistés et purgés au delete', async () => {

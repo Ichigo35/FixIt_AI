@@ -178,7 +178,28 @@ Diagnostic à partir d'un **court clip** (~15 s) — mouvement + son + pannes in
 
 - ✅ **Worker redéployé** (2026-09-02, version `a65c7f6c`) — nouveau `/auth/callback`, `/health` OK.
 
-**Reste (prod)** : publier l'écran de consentement Google (hors mode *Testing*) — **sinon Google bloque tout compte non listé comme *test user*** ; revérifier le flux OAuth end-to-end sur device avec le nouvel APK ; OAuth GitHub/Apple = plus tard.
+- ✅ **Flux OAuth Google validé end-to-end sur device** (2026-09-02, APK release) — chaud + froid, session persistée.
+
+### Publication de l'écran de consentement Google — en cours (2026-09-02)
+
+Google refuse de publier l'app *External* (Testing → Production) tant que la section **« Domaine de l'application »** (page d'accueil + règles de confidentialité + conditions) est vide.
+
+- ✅ **Pages publiques HTML servies par le Worker** (`apps/api/src/pages.ts`) : `GET /` (accueil), `GET /privacy`, `GET /terms`. CSP assouplie pour ces 3 chemins uniquement (`style-src 'unsafe-inline'`) via un middleware externe dans `app.ts` ; les routes JSON gardent `default-src 'none'`. `GET /` ne renvoie plus le JSON `{name,status}` (aucun consommateur). 6 tests ajoutés → **37 tests api**, typecheck + lint OK, rendu vérifié en local.
+- ✅ **Worker déployé** (2026-09-02, version `40c1fbcc`) — les 3 URL répondent en prod (HTML + bon CSP), `/health` inchangé.
+- ✅ **Console Google Cloud** (projet `fixit-ai-507310`) : domaine autorisé `ichigo35.workers.dev` ajouté, 3 URL renseignées, branding enregistré, **application publiée → « État de la publication : En production »**. Scopes non sensibles → aucune vérification Google requise.
+
+**➡️ Résultat : n'importe quel compte Google peut désormais se connecter à FixIt AI** (fin du mode Testing / plus besoin de *test users*). À revérifier vite fait sur device avec un compte Google non-testeur.
+
+OAuth GitHub/Apple = plus tard.
+
+### i18n flux de capture + médias dans « My Repairs » ✅ (2026-09-02)
+
+- ✅ **i18n du flux de capture** : `CaptureFlow`, `CameraCapture`, `VideoCapture`, `app/diagnosis/new.tsx` convertis à `t()`. Nouveaux namespaces `capture.*` (labels, permissions caméra/micro, placeholders, écran d'analyse) et `media.*`. Parité en/fr couverte par le test existant (`apps/mobile/test/i18n.test.ts`).
+- ✅ **Miniatures + lecture vidéo dans le détail du diagnostic** : `apps/mobile/src/features/diagnosis/DiagnosisMedia.tsx` — bande horizontale de vignettes (photos via `expo-image`, vidéos = tuile ▶) + visionneuse plein écran (`Modal`), lecture avec **`expo-video`** (`useVideoPlayer` / `VideoView` `nativeControls`), source authentifiée `videoSource(id)` (header `Authorization: Bearer`). Intégré dans `DiagnosisResultView` **et** `StopView`.
+- ✅ **API** : `getDiagnosis` (`apps/api/src/db/repos.ts`) renvoie désormais `input.imageIds` / `input.videoIds` = **l'id d'upload** (suffixe de `r2Key`), utilisable tel quel par `GET /uploads/:id`. Avant : l'id de ligne `diagnosis_images` (cassait la vignette « avant » d'`OutcomeSection`). Assertion ajoutée au test `avec image`.
+- ✅ **Dép. ajoutée** : `expo-video` (~57.0.3) — `apps/mobile/package.json` + plugin dans `app.config.ts`. `expo install` a été SIGKILL en cours (mémoire) → dép. ajoutée à la main, lockfile déjà cohérent.
+- ✅ 99 tests (34 shared + 37 api + 28 mobile), typecheck + lint OK.
+- ⏳ **Lecture vidéo non testée sur device** (composant natif `expo-video`) — à vérifier avec le prochain APK.
 
 ## Sécurité — durcissement ✅ (2026-09-01)
 

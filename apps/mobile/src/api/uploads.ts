@@ -19,6 +19,15 @@ export function imageSourceFromKey(r2Key: string | null) {
   return id ? imageSource(id) : null;
 }
 
+/** Source vidéo authentifiée pour `expo-video` (`useVideoPlayer` accepte `headers`). */
+export function videoSource(videoId: string) {
+  const token = authBridge.getAccessToken();
+  return {
+    uri: `${config.apiBaseUrl}/uploads/${videoId}`,
+    headers: token ? { authorization: `Bearer ${token}` } : undefined,
+  };
+}
+
 function contentTypeFor(uri: string): string {
   const lower = uri.toLowerCase();
   if (lower.endsWith('.png')) return 'image/png';

@@ -28,6 +28,48 @@ export const en: Dict = {
     disclaimer:
       'FixIt AI gives likely causes, not certainties. For anything involving mains power, gas, pressure or vehicle safety systems, it will tell you to call a professional.',
   },
+  capture: {
+    preparingCamera: 'Preparing camera…',
+    cameraNeededTitle: 'Camera access needed',
+    cameraNeededBody:
+      'FixIt AI uses the camera so you can photograph the problem you want to fix.',
+    allowCamera: 'Allow camera',
+    takePhoto: 'Take photo',
+    camMicNeededTitle: 'Camera and microphone needed',
+    camMicNeededBody:
+      'FixIt AI films a short clip so it can see movement and hear the sound of the problem.',
+    allowCamMic: 'Allow camera and microphone',
+    startRecording: 'Start recording',
+    stopRecording: 'Stop recording',
+    recElapsed: '{elapsed}s / {max}s',
+    libraryTitle: 'Pick a photo',
+    librarySub: 'Choose a picture of the problem from your library.',
+    openLibrary: 'Open library',
+    chooseVideoLibrary: 'Choose a video from library',
+    videoReady: 'Video ready',
+    videoReadySub: 'FixIt AI will watch it for movement, sound and intermittent faults.',
+    recordAgain: 'Record again',
+    retake: 'Retake',
+    chooseAnother: 'Choose another',
+    whatHappened: 'What happened?',
+    descPlaceholderVideo: 'e.g. It makes this grinding noise every time it starts to spin.',
+    descPlaceholderPhoto: 'e.g. Water is leaking from underneath when it spins.',
+    analyze: 'Analyze',
+    analyzing: 'Analyzing…',
+    analyzingVideo:
+      'FixIt AI is watching your video and checking for safety risks. Video can take a little longer.',
+    analyzingPhoto:
+      'FixIt AI is looking at the problem and checking for safety risks. This can take up to a minute.',
+    analyzeErrorTitle: "Couldn't analyze this",
+  },
+  media: {
+    heading: 'WHAT YOU SENT',
+    photo: 'PHOTO',
+    video: 'VIDEO',
+    playVideo: 'Play video',
+    close: 'Close',
+    videoUnavailable: 'Video unavailable',
+  },
   history: {
     title: 'My Repairs',
     loadError: "Couldn't load your repairs",

@@ -28,6 +28,49 @@ export const fr: Dict = {
     disclaimer:
       'FixIt AI donne des causes probables, pas des certitudes. Pour tout ce qui touche au secteur, au gaz, à la pression ou à la sécurité d’un véhicule, il vous orientera vers un professionnel.',
   },
+  capture: {
+    preparingCamera: 'Préparation de la caméra…',
+    cameraNeededTitle: 'Accès à la caméra requis',
+    cameraNeededBody:
+      'FixIt AI utilise la caméra pour photographier le problème à réparer.',
+    allowCamera: 'Autoriser la caméra',
+    takePhoto: 'Prendre la photo',
+    camMicNeededTitle: 'Caméra et micro requis',
+    camMicNeededBody:
+      'FixIt AI filme un court clip pour voir le mouvement et entendre le son du problème.',
+    allowCamMic: 'Autoriser la caméra et le micro',
+    startRecording: "Démarrer l'enregistrement",
+    stopRecording: "Arrêter l'enregistrement",
+    recElapsed: '{elapsed}s / {max}s',
+    libraryTitle: 'Choisir une photo',
+    librarySub: 'Choisissez une photo du problème dans votre galerie.',
+    openLibrary: 'Ouvrir la galerie',
+    chooseVideoLibrary: 'Choisir une vidéo dans la galerie',
+    videoReady: 'Vidéo prête',
+    videoReadySub: "FixIt AI l'analysera : mouvement, son et pannes intermittentes.",
+    recordAgain: 'Refilmer',
+    retake: 'Reprendre',
+    chooseAnother: 'En choisir une autre',
+    whatHappened: "Que s'est-il passé ?",
+    descPlaceholderVideo:
+      'ex. Ça fait un bruit de grincement à chaque fois que ça se met à tourner.',
+    descPlaceholderPhoto: "ex. De l'eau fuit par en dessous pendant l'essorage.",
+    analyze: 'Analyser',
+    analyzing: 'Analyse en cours…',
+    analyzingVideo:
+      'FixIt AI regarde votre vidéo et vérifie les risques de sécurité. La vidéo peut prendre un peu plus de temps.',
+    analyzingPhoto:
+      'FixIt AI examine le problème et vérifie les risques de sécurité. Cela peut prendre jusqu’à une minute.',
+    analyzeErrorTitle: 'Analyse impossible',
+  },
+  media: {
+    heading: 'CE QUE VOUS AVEZ ENVOYÉ',
+    photo: 'PHOTO',
+    video: 'VIDÉO',
+    playVideo: 'Lire la vidéo',
+    close: 'Fermer',
+    videoUnavailable: 'Vidéo indisponible',
+  },
   history: {
     title: 'Mes réparations',
     loadError: 'Impossible de charger vos réparations',

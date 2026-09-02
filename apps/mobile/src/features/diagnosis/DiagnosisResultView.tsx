@@ -12,6 +12,7 @@ import {
 } from '@/components';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
+import { DiagnosisMedia } from './DiagnosisMedia';
 import { RepairabilityMeter } from './RepairabilityMeter';
 
 function formatCost(cost: DiagnosisResult['diagnosis']['estimatedCost']): string {
@@ -59,6 +60,15 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
           </View>
         </Card>
       </FadeInView>
+
+      {result.input.imageIds.length > 0 || result.input.videoIds.length > 0 ? (
+        <FadeInView delay={50}>
+          <DiagnosisMedia
+            imageIds={result.input.imageIds}
+            videoIds={result.input.videoIds}
+          />
+        </FadeInView>
+      ) : null}
 
       <FadeInView delay={70}>
         <Card>

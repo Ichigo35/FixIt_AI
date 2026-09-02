@@ -5,6 +5,7 @@ import type { DiagnosisResult } from '@fixit/shared';
 import { Button, Card, Text } from '@/components';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
+import { DiagnosisMedia } from './DiagnosisMedia';
 
 export function StopView({ result }: { result: DiagnosisResult }) {
   const theme = useTheme();
@@ -47,6 +48,10 @@ export function StopView({ result }: { result: DiagnosisResult }) {
         </Text>
         <Text variant="heading">{result.diagnosis.problem}</Text>
       </Card>
+
+      {result.input.imageIds.length > 0 || result.input.videoIds.length > 0 ? (
+        <DiagnosisMedia imageIds={result.input.imageIds} videoIds={result.input.videoIds} />
+      ) : null}
 
       {result.safety.reasons.length > 0 ? (
         <Card>

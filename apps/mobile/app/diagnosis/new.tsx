@@ -5,6 +5,7 @@ import { createDiagnosis, type DiagnosisResponse } from '@/api/diagnoses';
 import { ErrorState, LoadingState, Screen } from '@/components';
 import { DiagnosisResultView } from '@/features/diagnosis/DiagnosisResultView';
 import { StopView } from '@/features/diagnosis/StopView';
+import { t } from '@/i18n';
 import { friendlyError, isRetryable } from '@/lib/errors';
 import { haptics } from '@/lib/haptics';
 
@@ -65,11 +66,11 @@ export default function NewDiagnosisScreen() {
     return (
       <Screen>
         <LoadingState
-          title="Analyzing…"
+          title={t('capture.analyzing')}
           detail={
             parseIds(params.videoIds).length > 0
-              ? 'FixIt AI is watching your video and checking for safety risks. Video can take a little longer.'
-              : 'FixIt AI is looking at the problem and checking for safety risks. This can take up to a minute.'
+              ? t('capture.analyzingVideo')
+              : t('capture.analyzingPhoto')
           }
         />
       </Screen>
@@ -80,7 +81,7 @@ export default function NewDiagnosisScreen() {
     return (
       <Screen>
         <ErrorState
-          title="Couldn't analyze this"
+          title={t('capture.analyzeErrorTitle')}
           message={state.message}
           onRetry={state.canRetry ? run : undefined}
         />

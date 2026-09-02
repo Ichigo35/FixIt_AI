@@ -2,6 +2,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { Button, Text } from '@/components';
+import { t } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
@@ -13,7 +14,7 @@ export function CameraCapture({ onCaptured }: { onCaptured: (uri: string) => voi
   if (!permission) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text muted>Preparing camera…</Text>
+        <Text muted>{t('capture.preparingCamera')}</Text>
       </View>
     );
   }
@@ -21,11 +22,9 @@ export function CameraCapture({ onCaptured }: { onCaptured: (uri: string) => voi
   if (!permission.granted) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', gap: theme.spacing.md }}>
-        <Text variant="heading">Camera access needed</Text>
-        <Text muted>
-          FixIt AI uses the camera so you can photograph the problem you want to fix.
-        </Text>
-        <Button label="Allow camera" onPress={requestPermission} />
+        <Text variant="heading">{t('capture.cameraNeededTitle')}</Text>
+        <Text muted>{t('capture.cameraNeededBody')}</Text>
+        <Button label={t('capture.allowCamera')} onPress={requestPermission} />
       </View>
     );
   }
@@ -50,7 +49,7 @@ export function CameraCapture({ onCaptured }: { onCaptured: (uri: string) => voi
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Take photo"
+          accessibilityLabel={t('capture.takePhoto')}
           onPress={take}
           style={{
             width: 72,

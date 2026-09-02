@@ -168,8 +168,9 @@ Diagnostic à partir d'un **court clip** (~15 s) — mouvement + son + pannes in
 - - ✅ **Identifiants Google propres** posés dans Neon Auth (`update_auth_oauth_provider`, `type: standard`). Redirect Google whitelisté = `https://api.stack-auth.com/api/v1/auth/oauth/callback/google`. Vérifié : l'endpoint `authorize` redirige vers Google avec le bon `client_id`.
 - ✅ **`eas.json`** (profils development/preview/production, `EXPO_PUBLIC_APP_ENV=production`).
 - ✅ **APK release Android buildé en local** (`expo prebuild` + `./gradlew :app:assembleRelease`). Fixes en passant : `pnpm-workspace.yaml` (`nodeLinker: hoisted` — pnpm 11 ignore `.npmrc`), NDK r27b installé manuellement. Détail dans `CLAUDE.md` § Build mobile.
+- ✅ **Fix « Unmatched Route » (2026-09-02)** : sur Android le navigateur ouvre le deep link `fixitai://oauth?code=…` au lieu de rendre la main à `openAuthSessionAsync`. Route `app/oauth.tsx` ajoutée → `completeGoogleSignIn(url)` termine l'échange (idempotent : deep link OU retour navigateur, grâce 4 s après cancel/dismiss). `'oauth'` joignable déconnecté dans le garde `_layout.tsx`.
 
-**Reste (prod)** : publier l'écran de consentement Google (hors mode *Testing*) ; tester le flux OAuth end-to-end sur device ; OAuth GitHub/Apple = plus tard.
+**Reste (prod)** : publier l'écran de consentement Google (hors mode *Testing*) ; revérifier le flux OAuth end-to-end sur device avec la route ; OAuth GitHub/Apple = plus tard.
 
 ## Sécurité — durcissement ✅ (2026-09-01)
 

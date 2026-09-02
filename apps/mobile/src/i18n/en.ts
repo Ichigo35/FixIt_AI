@@ -51,6 +51,7 @@ export const en: Dict = {
     emailExists: 'An account with this email already exists — sign in instead.',
     continueWithGoogle: 'Continue with Google',
     or: 'or',
+    signingIn: 'Signing you in…',
   },
   offline: {
     banner: 'No connection — changes will retry when you’re back online',

@@ -51,6 +51,7 @@ export const fr: Dict = {
     emailExists: 'Un compte existe déjà avec cet e-mail — connectez-vous.',
     continueWithGoogle: 'Continuer avec Google',
     or: 'ou',
+    signingIn: 'Connexion en cours…',
   },
   offline: {
     banner: 'Pas de connexion — les changements seront rejoués une fois en ligne',

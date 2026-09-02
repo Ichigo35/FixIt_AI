@@ -29,7 +29,9 @@ function RootStack() {
       return;
     }
     if (onboarding.status !== 'pending') {
-      if (status === 'signedOut' && route !== 'auth') router.replace('/auth');
+      // `oauth` = route de rebond OAuth : joignable même déconnecté, le temps de
+      // finir l'échange du code.
+      if (status === 'signedOut' && route !== 'auth' && route !== 'oauth') router.replace('/auth');
       else if (status === 'signedIn' && route === 'auth') router.replace('/');
     }
   }, [status, onboarding.status, segments, router]);
@@ -54,6 +56,7 @@ function RootStack() {
       >
         <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen name="auth" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen name="oauth" options={{ headerShown: false, animation: 'fade' }} />
         <Stack.Screen
           name="onboarding"
           options={{ headerShown: false, animation: 'fade' }}

@@ -18,6 +18,21 @@ export class OAuthCancelledError extends Error {
   }
 }
 
+/**
+ * Flux en cours. Le retour peut arriver par deux chemins selon l'OS / le navigateur :
+ * 1. la valeur de retour de `openAuthSessionAsync` (iOS, Custom Tabs qui intercepte) ;
+ * 2. un deep link `fixitai://oauth?...` capté par la route `app/oauth.tsx` (Android).
+ * On garde donc l'état ici et on résout le premier qui aboutit.
+ */
+interface PendingOAuth {
+  verifier: string;
+  state: string;
+  resolve: (session: StackSession) => void;
+  reject: (err: unknown) => void;
+  settled: boolean;
+}
+let pending: PendingOAuth | null = null;
+
 function base64Url(bytes: Uint8Array): string {
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);
@@ -36,36 +51,21 @@ async function pkceChallenge(verifier: string): Promise<string> {
   return digest.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** Flux OAuth Google (code d'autorisation + PKCE) via Neon Auth (Stack). */
-export async function signInWithGoogle(): Promise<StackSession> {
-  const verifier = randomToken(48);
-  const challenge = await pkceChallenge(verifier);
-  const state = randomToken(16);
+function settle(fn: (p: PendingOAuth) => void): void {
+  if (!pending || pending.settled) return;
+  const p = pending;
+  p.settled = true;
+  pending = null;
+  fn(p);
+}
 
-  // Paramètres alignés sur le SDK @stackframe (getOAuthUrl) : scope FIXE = "legacy",
-  // `type=authenticate`, `error_redirect_url` requis. Stack injecte lui-même les
-  // scopes Google (email/profile) côté serveur.
-  const authUrl = new URL(`${STACK_BASE}/auth/oauth/authorize/google`);
-  const q = authUrl.searchParams;
-  q.set('client_id', config.stackProjectId);
-  q.set('client_secret', config.stackPublishableKey);
-  q.set('redirect_uri', REDIRECT_URI);
-  q.set('error_redirect_url', REDIRECT_URI);
-  q.set('response_type', 'code');
-  q.set('grant_type', 'authorization_code');
-  q.set('scope', 'legacy');
-  q.set('type', 'authenticate');
-  q.set('state', state);
-  q.set('code_challenge', challenge);
-  q.set('code_challenge_method', 'S256');
+/** `true` si un flux Google est en attente d'un retour (deep link ou navigateur). */
+export function isOAuthPending(): boolean {
+  return pending !== null && !pending.settled;
+}
 
-  const result = await WebBrowser.openAuthSessionAsync(authUrl.toString(), APP_RETURN_URL);
-  if (result.type === 'cancel' || result.type === 'dismiss') throw new OAuthCancelledError();
-  if (result.type !== 'success' || !result.url) {
-    throw new StackAuthError('oauth_failed', 'Google sign-in did not complete');
-  }
-
-  const returned = new URL(result.url);
+async function exchangeCode(url: string, p: PendingOAuth): Promise<StackSession> {
+  const returned = new URL(url);
   const oauthError = returned.searchParams.get('error');
   if (oauthError) {
     throw new StackAuthError(
@@ -75,7 +75,7 @@ export async function signInWithGoogle(): Promise<StackSession> {
   }
   const code = returned.searchParams.get('code');
   if (!code) throw new StackAuthError('oauth_no_code', 'No authorization code returned');
-  if (returned.searchParams.get('state') !== state) {
+  if (returned.searchParams.get('state') !== p.state) {
     throw new StackAuthError('oauth_state_mismatch', 'Sign-in could not be verified — try again');
   }
 
@@ -87,7 +87,7 @@ export async function signInWithGoogle(): Promise<StackSession> {
       client_id: config.stackProjectId,
       client_secret: config.stackPublishableKey,
       code,
-      code_verifier: verifier,
+      code_verifier: p.verifier,
       redirect_uri: REDIRECT_URI,
     }).toString(),
   });
@@ -112,6 +112,64 @@ export async function signInWithGoogle(): Promise<StackSession> {
   };
   const userId = body.user_id ?? jwtSubject(body.access_token);
   if (!userId) throw new StackAuthError('oauth_no_user', 'Sign-in response was incomplete');
-
   return { accessToken: body.access_token, refreshToken: body.refresh_token, userId };
+}
+
+/**
+ * Termine le flux à partir de l'URL de redirection (`fixitai://oauth?code=...&state=...`).
+ * Appelé par la route `app/oauth.tsx` et par le retour de `openAuthSessionAsync`.
+ * Idempotent : ne fait rien si le flux est déjà résolu.
+ */
+export async function completeGoogleSignIn(url: string): Promise<void> {
+  if (!pending || pending.settled) return;
+  const p = pending;
+  try {
+    const session = await exchangeCode(url, p);
+    settle((x) => x.resolve(session));
+  } catch (err) {
+    settle((x) => x.reject(err));
+  }
+}
+
+/** Flux OAuth Google (code d'autorisation + PKCE) via Neon Auth (Stack). */
+export async function signInWithGoogle(): Promise<StackSession> {
+  // Un flux déjà en cours : on l'abandonne proprement.
+  settle((x) => x.reject(new OAuthCancelledError()));
+
+  const verifier = randomToken(48);
+  const challenge = await pkceChallenge(verifier);
+  const state = randomToken(16);
+
+  const authUrl = new URL(`${STACK_BASE}/auth/oauth/authorize/google`);
+  const q = authUrl.searchParams;
+  q.set('client_id', config.stackProjectId);
+  q.set('client_secret', config.stackPublishableKey);
+  q.set('redirect_uri', REDIRECT_URI);
+  q.set('error_redirect_url', REDIRECT_URI);
+  q.set('response_type', 'code');
+  q.set('grant_type', 'authorization_code');
+  q.set('scope', 'legacy');
+  q.set('type', 'authenticate');
+  q.set('state', state);
+  q.set('code_challenge', challenge);
+  q.set('code_challenge_method', 'S256');
+
+  const result = new Promise<StackSession>((resolve, reject) => {
+    pending = { verifier, state, resolve, reject, settled: false };
+  });
+
+  try {
+    const browser = await WebBrowser.openAuthSessionAsync(authUrl.toString(), APP_RETURN_URL);
+    if (browser.type === 'success' && browser.url) {
+      await completeGoogleSignIn(browser.url);
+    } else if (browser.type === 'cancel' || browser.type === 'dismiss') {
+      // Sur Android le deep link `fixitai://oauth` peut arriver juste après la
+      // fermeture du navigateur : on laisse à la route le temps de conclure.
+      setTimeout(() => settle((x) => x.reject(new OAuthCancelledError())), 4000);
+    }
+  } catch (err) {
+    settle((x) => x.reject(err));
+  }
+
+  return result;
 }

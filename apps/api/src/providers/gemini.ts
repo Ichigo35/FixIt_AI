@@ -85,13 +85,48 @@ export class GeminiProvider implements AIProvider {
     }
   }
 
-  /** Upload d'une vidéo via l'API Files puis attente de l'état ACTIVE. */
+  /**
+   * Upload d'une vidéo via l'API Files (protocole resumable documenté) puis attente
+   * de l'état ACTIVE. 1) start -> renvoie une upload URL ; 2) upload+finalize -> renvoie le File.
+   */
   private async uploadAndWaitVideo(data: ArrayBuffer, contentType: string): Promise<GeminiFile> {
+    const numBytes = data.byteLength;
+
+    let start: Response;
+    try {
+      start = await fetch(FILES_UPLOAD, {
+        method: 'POST',
+        headers: {
+          'x-goog-api-key': this.apiKey,
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': String(numBytes),
+          'X-Goog-Upload-Header-Content-Type': contentType,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ file: { display_name: 'diagnosis-clip' } }),
+      });
+    } catch (err) {
+      throw new AIProviderError('ai_request_failed', `Network error starting Gemini upload: ${String(err)}`);
+    }
+    if (!start.ok) {
+      const detail = await start.text().catch(() => '');
+      throw new AIProviderError('ai_request_failed', `Gemini upload start HTTP ${start.status}: ${detail.slice(0, 300)}`);
+    }
+    const uploadUrl = start.headers.get('x-goog-upload-url');
+    if (!uploadUrl) {
+      throw new AIProviderError('ai_request_failed', 'Gemini upload start returned no upload URL');
+    }
+
     let res: Response;
     try {
-      res = await fetch(`${FILES_UPLOAD}?uploadType=media`, {
+      res = await fetch(uploadUrl, {
         method: 'POST',
-        headers: { 'content-type': contentType, 'x-goog-api-key': this.apiKey },
+        headers: {
+          'content-length': String(numBytes),
+          'X-Goog-Upload-Offset': '0',
+          'X-Goog-Upload-Command': 'upload, finalize',
+        },
         body: data,
       });
     } catch (err) {

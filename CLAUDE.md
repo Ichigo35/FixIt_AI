@@ -30,21 +30,22 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 
 **Post-MVP : ✅**
 - **PHASE 8 Réparation interactive** : `AIProvider.verifyStep` (Gemini vision + Mock déterministe), table `repair_sessions` (Neon, migration `0001`), routes `POST/GET /diagnoses/:id/repair-session` + `.../verify` (autorité serveur : `current_step` n'avance que sur verdict `pass`), `StepCheck` mobile intégré à chaque étape du guide.
-- **PHASE 10 — 3e passe** : file de retry hors-ligne (`src/lib/outboxQueue.ts` + `OutboxProvider`), i18n FR/EN (`src/i18n/`, `expo-localization`, accueil/history/auth convertis), empty states illustrés (`IconMedallion`), transitions d'écran via `react-native-screens` (reanimated écarté : rebuild natif requis). 88 tests.
-- **OAuth Google (mobile)** : `src/auth/oauth.ts` (code d'autorisation + PKCE via `expo-web-browser`/`expo-crypto`), Worker `GET /auth/callback` (rebond https → `fixitai://oauth`), `AuthProvider.signInWithGoogle`. Clés Google partagées de Stack (dev) ; identifiants propres à poser pour la prod.
+- **PHASE 10 — 3e passe** : file de retry hors-ligne (`src/lib/outboxQueue.ts` + `OutboxProvider`), i18n FR/EN (`src/i18n/`, `expo-localization`, accueil/history/auth convertis), empty states illustrés (`IconMedallion`), transitions d'écran via `react-native-screens` (`Stack.Screen animation`). 88 tests. NB : `react-native-reanimated` **est** présent (dép. transitive d'`expo-router` 57) et compilé dans les builds natifs.
+- **OAuth Google (mobile)** : `src/auth/oauth.ts` (code d'autorisation + PKCE via `expo-web-browser`/`expo-crypto`), `src/auth/jwt.ts`, Worker `GET /auth/callback` (rebond https → `fixitai://oauth`), `AuthProvider.signInWithGoogle`, bouton sur l'écran auth. **Identifiants Google propres de l'utilisateur posés dans Neon Auth** (`update_auth_oauth_provider`, type `standard`) ; redirect Google whitelisté = `https://api.stack-auth.com/api/v1/auth/oauth/callback/google`.
+- **Build Android natif** : `expo prebuild` + `./gradlew :app:assembleRelease` en local. APK release (signé clé debug) OK. Voir « Build mobile » ci-dessous.
 - **PHASE 10 Polish (2 passes)** : erreurs centralisées (`lib/errors.ts`), `LoadingState`/`ErrorState`/`EmptyState`, `ErrorBoundary`, onboarding, animations `Animated` natives (`FadeInView`, meter), a11y, `history` en `FlatList` · puis `expo-haptics`, skeletons, pull-to-refresh, `OfflineBanner`+`ConnectivityProvider`.
 - **CI** : `.github/workflows/ci.yml` (lint + typecheck + tests sur push/PR `main`), secret `DATABASE_URL` posé, runs verts.
 - **Storage** : R2 → **Neon Object Storage** (S3, `aws4fetch`), abstraction `apps/api/src/storage/`.
 - **Déploiement** : **Worker prod live** `https://fixit-ai-api.ichigo35.workers.dev` — `APP_ENV=production`, 4 secrets, `/health` OK, E2E authentifié (upload/get/403/delete) vérifié en prod.
 - **Sécurité** : `secureHeaders` + `bodyLimit` + rate limiting Cloudflare. RLS écartée (voir Décisions).
-- **55 tests** (26 shared + 9 mobile + 20 api). Base Neon vierge (prête pour de vrais utilisateurs).
+- **88 tests** (32 shared + 28 api + 28 mobile). Base Neon vierge (prête pour de vrais utilisateurs).
 
-**À faire :** PHASE 9 (vidéo) = V3 · build/EAS mobile (nécessaire pour tester OAuth : Expo Go ne gère pas le schéma natif) · identifiants Google OAuth propres pour la prod · reanimated (si rebuild natif) · i18n sur les écrans restants.
+**À faire :** PHASE 9 (vidéo) = V3 · EAS Build (CI de builds) · tester le flux OAuth Google end-to-end sur device · publier l'écran de consentement Google (hors mode Testing) · i18n sur les écrans restants · domaine custom = abandonné.
 
 ## Infra provisionnée
 
 - **Neon** : projet `fixit-ai` = `winter-union-90877282` (org `org-sweet-tooth-50877405`, aws-us-east-2, PG 17). `DATABASE_URL` dans `apps/api/.dev.vars` + secret Worker. Branche `br-rough-feather-a5r1cdyr`. Tables : `app_users`, `diagnoses`, `diagnosis_images`, `repair_guides`, `repair_history`, `repair_sessions` + `neon_auth.users_sync`. Migrations Drizzle dans `apps/api/drizzle/`. Driver = `drizzle-orm/neon-http` (HTTP, **sans transaction**). Colonnes `r2_key*` = anciens noms, contenu = clés Neon Object Storage.
-- **Neon Auth (Stack)** : projet Stack `3432abc2-2b77-4b7b-acff-0686a7b99697`. `STACK_PROJECT_ID` / `STACK_JWKS_URL` / `STACK_PUBLISHABLE_KEY` dans `wrangler.toml [vars]` (publics) et `apps/mobile/app.config.ts extra`. Email/password + **OAuth Google** (clés partagées Stack en dev — `list_auth_oauth_providers` = `shared`). Domaine de confiance `https://fixit-ai-api.ichigo35.workers.dev` (redirect OAuth). Worker vérifie le JWT via JWKS (`jose`). Endpoints OAuth Stack : `GET /api/v1/auth/oauth/authorize/google` (params `client_id`=projectId, `client_secret`=publishable key, `redirect_uri`, `response_type=code`, `scope`, `state`, `code_challenge`+`_method=S256`) → `POST /api/v1/auth/oauth/token` (`grant_type=authorization_code`, `code`, `code_verifier`, `redirect_uri`).
+- **Neon Auth (Stack)** : projet Stack `3432abc2-2b77-4b7b-acff-0686a7b99697`. `STACK_PROJECT_ID` / `STACK_JWKS_URL` / `STACK_PUBLISHABLE_KEY` dans `wrangler.toml [vars]` (publics) et `apps/mobile/app.config.ts extra`. Email/password + **OAuth Google** (identifiants Google propres de l'utilisateur posés via `update_auth_oauth_provider`, `type: standard` ; le redirect Google whitelisté dans la console Google = `https://api.stack-auth.com/api/v1/auth/oauth/callback/google`). Domaine de confiance `https://fixit-ai-api.ichigo35.workers.dev` (redirect OAuth). Écran de consentement Google encore en mode **Testing** → seuls les *test users* peuvent se connecter. Worker vérifie le JWT via JWKS (`jose`). Endpoints OAuth Stack : `GET /api/v1/auth/oauth/authorize/google` (params `client_id`=projectId, `client_secret`=publishable key, `redirect_uri`, `response_type=code`, `scope`, `state`, `code_challenge`+`_method=S256`) → `POST /api/v1/auth/oauth/token` (`grant_type=authorization_code`, `code`, `code_verifier`, `redirect_uri`).
 - **Gemini** : clé dans `apps/api/.dev.vars` (`GEMINI_API_KEY`), modèle **`gemini-3.6-flash`** (`gemini-2.5-flash` retiré par Google). Appel REST `generateContent` + `responseSchema`. Sans clé → `MockProvider`.
 - **Neon Object Storage (S3)** : bucket `fixit-ai-images` (private) sur la branche `br-rough-feather-a5r1cdyr`. Endpoint `https://br-rough-feather-a5r1cdyr.storage.c-1.us-east-2.aws.neon.tech`, région `us-east-2`, path-style. Credential `fixit-api-worker-rw` (scopes `storage:read`+`storage:write` — `write` seul **ne suffit pas** en beta malgré la doc). Clés S3 dans `.dev.vars` + secrets Worker `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`. Client : `apps/api/src/storage/` (`aws4fetch`, SigV4). `getStorage(env)` : `env.STORAGE` (tests) sinon client S3. Palier gratuit 5 Go/compte (beta).
 - **Cloudflare Worker** : `fixit-ai-api` déployé sur `https://fixit-ai-api.ichigo35.workers.dev` (compte `tcha.jimmy@gmail.com` = `34cf747a1eaf3858a49e4fafaf9580e0`). `wrangler` déjà loggé. Secrets posés : `GEMINI_API_KEY`, `DATABASE_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`. Redéployer : `pnpm --filter @fixit/api run deploy` (le `run` est obligatoire — `pnpm deploy` est une sous-commande pnpm). `APP_ENV=production` dans `wrangler.toml [vars]` (désactive le bypass `x-dev-user-id`) ; `apps/api/.dev.vars` remet `APP_ENV=development` en local.
@@ -57,6 +58,26 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 
 `pnpm api` (wrangler dev :8788) · `pnpm mobile` (Expo) · `pnpm -r test` · `pnpm -r typecheck` · `pnpm lint`
 Port API dev = **8788** (8787 occupé par un autre projet local de l'utilisateur).
+
+## Build mobile (Android, local)
+
+`android/` et `ios/` sont **gitignore** (générés par `expo prebuild`). Prérequis machine :
+- `pnpm` **11** ignore `.npmrc` pour ses réglages → `nodeLinker: hoisted` + `shamefullyHoist: true` sont dans `pnpm-workspace.yaml`. Vérif : `pnpm config get node-linker` → `hoisted`. Sinon `babel-preset-expo` (et autres deps transitives) introuvables au bundling.
+- **NDK `27.1.12297006` (r27b)** requis par RN 0.86 — installé manuellement dans `~/Library/Android/sdk/ndk/` (pas de `cmdline-tools` → AGP ne peut pas l'auto-télécharger).
+- `JAVA_HOME` = **openjdk@17** (pas 21). `ANDROID_HOME=~/Library/Android/sdk`.
+
+Build APK release (signé avec la clé debug → installable, JS bundlé) :
+```
+cd apps/mobile && npx expo prebuild --platform android --clean --no-install
+cd android
+export ANDROID_HOME=~/Library/Android/sdk JAVA_HOME=<openjdk17> EXPO_PUBLIC_APP_ENV=production
+./gradlew :app:assembleRelease -x lint
+# → app/build/outputs/apk/release/app-release.apk
+```
+APK léger (~arm64 + R8) : dans `android/gradle.properties` poser `reactNativeArchitectures=arm64-v8a`,
+`android.enableMinifyInReleaseBuilds=true`, `android.enableShrinkResourcesInReleaseBuilds=true`.
+`EXPO_PUBLIC_APP_ENV=production` est **impératif** pour OAuth (redirect_uri `/auth/callback` doit être joignable depuis le navigateur système). `eas.json` a des profils prêts si EAS est installé un jour.
+Tester OAuth : impossible en Expo Go (schéma natif `fixitai://`) → dev-client ou APK.
 
 ## Environnement (machine utilisateur, audit 2026-08-31)
 

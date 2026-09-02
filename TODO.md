@@ -155,7 +155,11 @@ Les URLs pré-signées restent possibles plus tard (optim).
 - ✅ **Neon Auth (Stack)** : provider Google déjà dispo en **clés partagées** (dev). Domaine de confiance `https://fixit-ai-api.ichigo35.workers.dev` ajouté.
 - ✅ **Worker** : route publique `GET /auth/callback` — rebond du `redirect_uri` https (exigé par Stack) vers le schéma natif `fixitai://oauth?code=…&state=…` (meta-refresh, seuls `code`/`state`/`error` relayés). **+1 test**.
 - ✅ **Mobile** : `src/auth/oauth.ts` — flux code d'autorisation **+ PKCE** (`expo-crypto` S256), `expo-web-browser` `openAuthSessionAsync`, vérif du `state`, échange sur `/auth/oauth/token`, `sub` extrait du JWT (`src/auth/jwt.ts`, testé). `AuthProvider.signInWithGoogle` + bouton « Continue with Google » sur l'écran auth (`OAuthCancelledError` silencieuse).
-- **Reste (prod)** : créer des identifiants Google OAuth propres + les poser dans Neon Auth (`add_auth_oauth_provider`) pour retirer l'écran de consentement « Stack » ; tester le flux complet sur un dev-client (Expo Go ne gère pas le schéma natif). OAuth GitHub/Apple = plus tard.
+- - ✅ **Identifiants Google propres** posés dans Neon Auth (`update_auth_oauth_provider`, `type: standard`). Redirect Google whitelisté = `https://api.stack-auth.com/api/v1/auth/oauth/callback/google`. Vérifié : l'endpoint `authorize` redirige vers Google avec le bon `client_id`.
+- ✅ **`eas.json`** (profils development/preview/production, `EXPO_PUBLIC_APP_ENV=production`).
+- ✅ **APK release Android buildé en local** (`expo prebuild` + `./gradlew :app:assembleRelease`). Fixes en passant : `pnpm-workspace.yaml` (`nodeLinker: hoisted` — pnpm 11 ignore `.npmrc`), NDK r27b installé manuellement. Détail dans `CLAUDE.md` § Build mobile.
+
+**Reste (prod)** : publier l'écran de consentement Google (hors mode *Testing*) ; tester le flux OAuth end-to-end sur device ; OAuth GitHub/Apple = plus tard.
 
 ## Sécurité — durcissement ✅ (2026-09-01)
 

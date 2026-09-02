@@ -3,6 +3,7 @@ import { createApp } from '../src/app';
 import { baseEnv, devAuth, memoryStorage } from './helpers';
 
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+const mp4 = new Uint8Array([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]);
 const uid = 'test-uploads';
 
 function env(extra: object = {}) {
@@ -35,7 +36,23 @@ describe('POST /uploads', () => {
     expect((e.STORAGE as ReturnType<typeof memoryStorage>)._store.has(`uploads/${body.id}`)).toBe(true);
   });
 
-  it('refuse un type non image (415)', async () => {
+  it('stocke une vidéo MP4 avec kind=video', async () => {
+    const e = env();
+    const app = createApp();
+    const res = await app.request(
+      '/uploads',
+      { method: 'POST', headers: { 'content-type': 'video/mp4', ...devAuth(uid) }, body: mp4 },
+      e,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; kind: string; contentType: string };
+    expect(body.kind).toBe('video');
+    expect(body.contentType).toBe('video/mp4');
+    const stored = (e.STORAGE as ReturnType<typeof memoryStorage>)._store.get(`uploads/${body.id}`);
+    expect(stored?.metadata.kind).toBe('video');
+  });
+
+  it('refuse un type non supporté (415)', async () => {
     const app = createApp();
     const res = await app.request(
       '/uploads',

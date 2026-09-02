@@ -6,12 +6,19 @@ export interface DiagnoseImage {
   data: ArrayBuffer;
 }
 
+export interface DiagnoseVideo {
+  contentType: string;
+  /** octets bruts de la vidéo (courte, ~15 s) */
+  data: ArrayBuffer;
+}
+
 export interface DiagnoseInput {
   description: string;
   category?: Category | null;
   brand?: string | null;
   model?: string | null;
   images: DiagnoseImage[];
+  videos?: DiagnoseVideo[];
 }
 
 export interface RepairGuideInput {

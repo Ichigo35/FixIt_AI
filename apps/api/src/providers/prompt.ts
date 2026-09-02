@@ -40,6 +40,11 @@ export function buildUserPrompt(input: DiagnoseInput): string {
       ? `${input.images.length} photo(s) are attached — analyse visible components, damage, wear, corrosion, cracks, leaks, missing parts, cabling, error codes, labels.`
       : 'No photo was attached — reason from the description only and be more conservative.',
   );
+  if ((input.videos?.length ?? 0) > 0) {
+    lines.push(
+      'A short video is attached — watch it for movement, sound cues, vibration, sparks, smoke, leaks or intermittent faults that a still photo would miss. Note the timestamp of anything relevant.',
+    );
+  }
   lines.push(
     'Give the most likely problem, a confidence 0..1, possible causes, difficulty, tools, parts, time and cost estimates, and a clear recommendation.',
   );

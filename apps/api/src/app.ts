@@ -2,7 +2,7 @@ import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
-import { MAX_UPLOAD_BYTES } from '@fixit/shared';
+import { MAX_VIDEO_BYTES } from '@fixit/shared';
 import { isAdminEmail } from './auth/admin';
 import { requireAuth } from './auth/middleware';
 import { getDb } from './db/client';
@@ -31,10 +31,11 @@ export function createApp() {
 
   app.use('*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'] }));
 
-  // Plafond de taille du corps (défense mémoire) : images ≤ MAX_UPLOAD_BYTES, JSON ≤ 64 Kio.
+  // Plafond de taille du corps (défense mémoire) : média ≤ MAX_VIDEO_BYTES (photo ≤ MAX_UPLOAD_BYTES
+  // vérifié dans la route selon le Content-Type), JSON ≤ 64 Kio.
   const tooLarge = (c: Context) =>
-    c.json({ error: 'payload_too_large', maxBytes: MAX_UPLOAD_BYTES }, 413);
-  app.use('/uploads', bodyLimit({ maxSize: MAX_UPLOAD_BYTES, onError: tooLarge }));
+    c.json({ error: 'payload_too_large', maxBytes: MAX_VIDEO_BYTES }, 413);
+  app.use('/uploads', bodyLimit({ maxSize: MAX_VIDEO_BYTES, onError: tooLarge }));
   app.use('/diagnoses', bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
   app.use('/diagnoses/*', bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
 

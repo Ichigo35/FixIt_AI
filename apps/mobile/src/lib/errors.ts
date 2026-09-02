@@ -16,9 +16,10 @@ const BY_CODE: Record<string, string> = {
     'This problem is not safe to attempt yourself — no guide is available.',
   not_found: 'This item no longer exists.',
   forbidden: "You don't have access to this.",
-  payload_too_large: 'That image is too large. Try a smaller photo.',
-  unsupported_media_type: 'That file type is not supported. Use a JPEG, PNG or WebP photo.',
-  image_not_found: "We couldn't find that photo anymore. Try adding it again.",
+  payload_too_large: 'That file is too large. Use a smaller photo or a shorter video.',
+  unsupported_media_type:
+    'That file type is not supported. Use a JPEG, PNG or WebP photo, or an MP4/MOV video.',
+  image_not_found: "We couldn't find that file anymore. Try adding it again.",
   storage_unavailable: 'Photo storage is unavailable right now. Please try again shortly.',
   unauthorized: 'Please sign in again.',
   invalid_token: 'Your session expired. Please sign in again.',

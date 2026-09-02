@@ -30,7 +30,7 @@ import {
   type ImageMeta,
 } from '../db/repos';
 import { AIProviderError, getAIProvider } from '../providers';
-import type { DiagnoseImage } from '../providers/types';
+import type { DiagnoseImage, DiagnoseVideo } from '../providers/types';
 import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
 
@@ -59,22 +59,32 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     return c.json({ error: 'quota_exceeded', used: quota.used, limit: quota.limit }, 429);
   }
 
-  // Récupération des images depuis le stockage objet (+ métadonnées pour diagnosis_images).
+  // Récupération des médias depuis le stockage objet (+ métadonnées pour diagnosis_images).
   const images: DiagnoseImage[] = [];
+  const videos: DiagnoseVideo[] = [];
   const imageMeta: ImageMeta[] = [];
-  if (req.imageIds.length > 0) {
+  const mediaIds = [...req.imageIds, ...req.videoIds];
+  if (mediaIds.length > 0) {
     const storage = getStorage(c.env);
     if (!storage) return c.json({ error: 'storage_unavailable' }, 503);
-    for (const id of req.imageIds) {
+    for (const id of mediaIds) {
       const key = `uploads/${id}`;
       const obj = await storage.get(key);
       if (!obj) return c.json({ error: 'image_not_found', id }, 400);
+      if (obj.metadata.userid && obj.metadata.userid !== userId) {
+        return c.json({ error: 'image_not_found', id }, 400);
+      }
       const data = obj.data;
       const contentType = obj.contentType || 'image/jpeg';
-      images.push({ contentType, data });
+      const isVideo = contentType.startsWith('video/') || obj.metadata.kind === 'video';
+      if (isVideo) {
+        videos.push({ contentType, data });
+      } else {
+        images.push({ contentType, data });
+      }
       imageMeta.push({
         r2Key: key,
-        kind: obj.metadata.kind ?? 'problem',
+        kind: isVideo ? 'video' : obj.metadata.kind ?? 'problem',
         contentType,
         bytes: data.byteLength,
       });
@@ -90,6 +100,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       brand: req.brand ?? null,
       model: req.model ?? null,
       images,
+      videos,
     });
   } catch (err) {
     if (err instanceof AIProviderError) {
@@ -116,6 +127,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       brand: req.brand ?? null,
       model: req.model ?? null,
       imageIds: req.imageIds,
+      videoIds: req.videoIds,
     },
     diagnosis: raw,
     safety,

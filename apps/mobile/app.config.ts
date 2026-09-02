@@ -46,13 +46,17 @@ const config: ExpoConfig = {
     [
       'expo-camera',
       {
-        cameraPermission: 'FixIt AI uses the camera so you can photograph the problem you want to fix.',
+        cameraPermission: 'FixIt AI uses the camera so you can photograph or film the problem you want to fix.',
+        microphonePermission:
+          'FixIt AI uses the microphone so a short video can capture the sound of the problem.',
+        recordAudioAndroid: true,
       },
     ],
     [
       'expo-image-picker',
       {
-        photosPermission: 'FixIt AI needs access to your photos so you can pick a picture of the problem.',
+        photosPermission:
+          'FixIt AI needs access to your photos so you can pick a picture or a short video of the problem.',
       },
     ],
     'expo-secure-store',

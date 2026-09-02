@@ -25,11 +25,13 @@ export class MockProvider implements AIProvider {
     // pour que le SafetyClassifier ait de quoi travailler dans les tests.
     const dangerous = /(mains|gas|voltage|battery|electric|câble|cable|fuel|brake)/.test(text);
 
+    const hasMedia = input.images.length > 0 || (input.videos?.length ?? 0) > 0;
+
     return coerceRawDiagnosis({
       problem: dangerous
         ? 'Possible hazardous fault — more information needed'
         : 'Likely a common wear-and-tear fault (mock diagnosis)',
-      confidence: input.images.length > 0 ? 0.5 : 0.35,
+      confidence: hasMedia ? 0.5 : 0.35,
       severity: dangerous ? 'HIGH' : 'LOW',
       difficulty: dangerous ? 'PROFESSIONAL' : 'EASY',
       possibleCauses: dangerous

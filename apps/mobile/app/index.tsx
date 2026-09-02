@@ -41,7 +41,8 @@ const ACTIONS: Action[] = [
     icon: '🎥',
     title: t('home.actionVideoTitle'),
     subtitle: t('home.actionVideoSub'),
-    soon: true,
+    route: '/capture',
+    params: { mode: 'video' },
   },
 ];
 

@@ -225,6 +225,42 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(res.status).toBe(201);
   });
 
+  it('avec vidéo : upload puis diagnostic, videoIds persistés et purgés au delete', async () => {
+    const uid = freshUser();
+    const e = env();
+    const store = (e.STORAGE as ReturnType<typeof memoryStorage>)._store;
+    const app = createApp();
+
+    const mp4 = new Uint8Array([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]);
+    const up = (await (
+      await app.request(
+        '/uploads',
+        { method: 'POST', headers: { 'content-type': 'video/mp4', ...devAuth(uid) }, body: mp4 },
+        e,
+      )
+    ).json()) as { id: string; kind: string };
+    expect(up.kind).toBe('video');
+
+    const res = await post(
+      app,
+      { description: 'it rattles loudly when it spins up', videoIds: [up.id] },
+      e,
+      uid,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Record<string, any>;
+    expect(body.input.videoIds).toEqual([up.id]);
+
+    const detail = (await (
+      await app.request(`/diagnoses/${body.id}`, { headers: devAuth(uid) }, e)
+    ).json()) as Record<string, any>;
+    expect(detail.input.videoIds).toEqual([up.id]);
+
+    const del = await app.request(`/diagnoses/${body.id}`, { method: 'DELETE', headers: devAuth(uid) }, e);
+    expect(del.status).toBe(204);
+    expect(store.has(`uploads/${up.id}`)).toBe(false);
+  });
+
   it('DELETE /diagnoses/:id purge aussi l\'image liée du stockage objet', async () => {
     const uid = freshUser();
     const e = env();

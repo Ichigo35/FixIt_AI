@@ -1,18 +1,21 @@
 import { Hono } from 'hono';
 import {
-  IMAGE_KINDS,
   MAX_UPLOAD_BYTES,
-  UPLOAD_CONTENT_TYPES,
-  type ImageKind,
-  type UploadContentType,
+  MAX_VIDEO_BYTES,
+  MEDIA_CONTENT_TYPES,
+  UPLOAD_KINDS,
+  VIDEO_CONTENT_TYPES,
+  type MediaContentType,
+  type UploadKind,
 } from '@fixit/shared';
 import { requireAuth } from '../auth/middleware';
 import { rateLimit } from '../middleware/rateLimit';
 import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
 
-const CONTENT_TYPES = new Set<string>(UPLOAD_CONTENT_TYPES);
-const KINDS = new Set<string>(IMAGE_KINDS);
+const CONTENT_TYPES = new Set<string>(MEDIA_CONTENT_TYPES);
+const VIDEO_TYPES = new Set<string>(VIDEO_CONTENT_TYPES);
+const KINDS = new Set<string>(UPLOAD_KINDS);
 
 /** Clé d'objet plate ; l'appartenance est vérifiée via `metadata.userid`. */
 function objectKey(id: string): string {
@@ -29,13 +32,15 @@ uploads.post('/', rateLimit('UPLOAD_RL'), async (c) => {
     return c.json({ error: 'unsupported_media_type', allowed: [...CONTENT_TYPES] }, 415);
   }
 
-  const kindParam = c.req.query('kind') ?? 'problem';
-  const kind: ImageKind = KINDS.has(kindParam) ? (kindParam as ImageKind) : 'problem';
+  const isVideo = VIDEO_TYPES.has(contentType);
+  const kindParam = c.req.query('kind') ?? (isVideo ? 'video' : 'problem');
+  const kind: UploadKind = KINDS.has(kindParam) ? (kindParam as UploadKind) : 'problem';
+  const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_UPLOAD_BYTES;
 
   const body = await c.req.arrayBuffer();
   if (body.byteLength === 0) return c.json({ error: 'empty_body' }, 400);
-  if (body.byteLength > MAX_UPLOAD_BYTES) {
-    return c.json({ error: 'payload_too_large', maxBytes: MAX_UPLOAD_BYTES }, 413);
+  if (body.byteLength > maxBytes) {
+    return c.json({ error: 'payload_too_large', maxBytes }, 413);
   }
   const storage = getStorage(c.env);
   if (!storage) return c.json({ error: 'storage_unavailable' }, 503);
@@ -52,7 +57,7 @@ uploads.post('/', rateLimit('UPLOAD_RL'), async (c) => {
   });
 
   return c.json(
-    { id, kind, bytes: body.byteLength, contentType: contentType as UploadContentType },
+    { id, kind, bytes: body.byteLength, contentType: contentType as MediaContentType },
     201,
   );
 });

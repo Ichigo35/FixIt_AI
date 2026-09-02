@@ -22,7 +22,7 @@ export const en: Dict = {
     actionDescribeTitle: 'Describe the problem',
     actionDescribeSub: 'Tell us what is wrong in your own words',
     actionVideoTitle: 'Record a video',
-    actionVideoSub: 'Strange noises & movement — coming soon',
+    actionVideoSub: 'Film a short clip of strange noises or movement',
     soon: 'SOON',
     comingSoon: 'Coming soon.',
     disclaimer:

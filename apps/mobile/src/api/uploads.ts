@@ -1,4 +1,5 @@
-import type { ImageKind, UploadResult } from '@fixit/shared';
+import { MAX_VIDEO_BYTES, type UploadKind, type UploadResult } from '@fixit/shared';
+import { ApiError } from './ApiError';
 import { config } from '@/config';
 import { apiPostBinary, authBridge } from './client';
 
@@ -26,7 +27,7 @@ function contentTypeFor(uri: string): string {
 }
 
 /** Lit un fichier local (file://) et l'envoie au Worker. Renvoie l'id de l'image stockée. */
-export async function uploadImage(uri: string, kind: ImageKind = 'problem'): Promise<UploadResult> {
+export async function uploadImage(uri: string, kind: UploadKind = 'problem'): Promise<UploadResult> {
   const fileRes = await fetch(uri);
   const blob = await fileRes.blob();
   const contentType = blob.type && blob.type.startsWith('image/') ? blob.type : contentTypeFor(uri);
@@ -35,4 +36,22 @@ export async function uploadImage(uri: string, kind: ImageKind = 'problem'): Pro
     blob,
     contentType,
   );
+}
+
+function videoContentTypeFor(uri: string): 'video/mp4' | 'video/quicktime' {
+  return uri.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4';
+}
+
+/** Envoie une courte vidéo de diagnostic. Rejette tôt si le fichier dépasse la limite serveur. */
+export async function uploadVideo(uri: string): Promise<UploadResult> {
+  const fileRes = await fetch(uri);
+  const blob = await fileRes.blob();
+  if (blob.size > MAX_VIDEO_BYTES) {
+    throw new ApiError(413, 'payload_too_large');
+  }
+  const contentType =
+    blob.type === 'video/mp4' || blob.type === 'video/quicktime'
+      ? blob.type
+      : videoContentTypeFor(uri);
+  return apiPostBinary<UploadResult>('/uploads?kind=video', blob, contentType);
 }

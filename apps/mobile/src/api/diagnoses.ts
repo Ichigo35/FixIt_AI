@@ -43,6 +43,7 @@ export interface CreateDiagnosisInput {
   brand?: string | null;
   model?: string | null;
   imageIds?: string[];
+  videoIds?: string[];
 }
 
 export function createDiagnosis(input: CreateDiagnosisInput): Promise<DiagnosisResponse> {
@@ -52,6 +53,7 @@ export function createDiagnosis(input: CreateDiagnosisInput): Promise<DiagnosisR
     brand: input.brand ?? null,
     model: input.model ?? null,
     imageIds: input.imageIds ?? [],
+    videoIds: input.videoIds ?? [],
   });
 }
 

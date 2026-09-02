@@ -38,7 +38,7 @@ Légende : ✅ fait · 🚧 en cours · ⏳ à faire · ⏸️ reporté V2/V3
 - ✅ Champ description « What happened? »
 - ✅ `POST /uploads` : upload relayé par le Worker vers **R2** (binding `IMAGES`), validation type/taille (JPEG/PNG/WebP, 10 Mo), `GET` + `DELETE /uploads/:id`
 - ✅ `src/api/client.ts` (fetch typé + `ApiError`) et `src/api/uploads.ts`
-- ✅ Bouton vidéo = **SOON** (déjà en place PHASE 2)
+- ✅ Bouton vidéo = **SOON** en PHASE 3 → **activé en PHASE 9** (2026-09-02)
 - ✅ 5 tests API (mock R2 en mémoire) ; vérifié end-to-end via `wrangler dev` + R2 local (`curl` upload/get/415)
 
 **Écart vs plan initial :** upload **relayé par le Worker** (mobile → Worker → R2) plutôt qu'URL
@@ -119,9 +119,18 @@ Les URLs pré-signées restent possibles plus tard (optim).
 
 **Reste V2+ :** reprise de session persistée côté mobile (le serveur fait déjà autorité), photos de session dans « My Repairs ».
 
-## PHASE 9 — VIDEO ⏸️ V3
+## PHASE 9 — VIDEO ✅ (2026-09-02)
 
-- ⏸️ Capture vidéo, extraction frames, audio, analyse multimodale (jamais simulé)
+Diagnostic à partir d'un **court clip** (~15 s) — mouvement + son + pannes intermittentes qu'une photo rate.
+
+- ✅ **Shared** : `VIDEO_CONTENT_TYPES` (`video/mp4`, `video/quicktime`), `MEDIA_CONTENT_TYPES`, `UPLOAD_KINDS` (+`video`), `MAX_VIDEO_BYTES` (40 Mo), `MAX_VIDEO_DURATION_SECONDS` (15). `createDiagnosisRequestSchema.videoIds` (max 1). `diagnosisResultSchema.input.videoIds`.
+- ✅ **`POST /uploads`** accepte les vidéos (`kind=video`), plafond `MAX_VIDEO_BYTES` (par Content-Type). `bodyLimit` `/uploads` relevé à 40 Mo.
+- ✅ **Gemini File API** (`apps/api/src/providers/gemini.ts`) : upload résumable `uploadType=media` → polling `state=ACTIVE` (20×1,5 s) → part `file_data`. Nettoyage best-effort après réponse (Gemini purge sinon à 48 h). Trop lourd pour l'inline base64.
+- ✅ **`POST /diagnoses`** : récupère les vidéos du storage, `provider.diagnose({ images, videos })`. Vérif d'appartenance sur chaque média. `imageMeta` enregistre le kind `video` → **purge cascade au DELETE**. `MockProvider` gère `videos` (déterministe).
+- ✅ **Mobile** : `VideoCapture` (expo-camera `mode="video"` + micro + minuteur + cap 15 s), `CaptureFlow` mode `video` (caméra **ou** galerie `mediaTypes:['videos']`), `uploadVideo` (rejet client >40 Mo), action d'accueil « Filmer une vidéo » **activée** (plus de *SOON*). `app.config.ts` : `microphonePermission` + `recordAudioAndroid`.
+- ✅ **93 tests** (34 shared + 31 api + 28 mobile).
+- ⚠️ **Non testé sur device** (schéma natif + File API réelle). Le pipeline File API n'est couvert qu'en dry-run/typecheck ; les tests API tournent avec le MockProvider.
+- ⏳ **Reste** : redéployer le Worker ; miniature vidéo dans la preview et « My Repairs » ; extraction de durée côté mobile ; lecture de la vidéo dans le détail d'un diagnostic.
 
 ## PHASE 10 — POLISH ✅ (1re passe)
 

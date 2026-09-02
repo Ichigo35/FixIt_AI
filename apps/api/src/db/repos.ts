@@ -152,7 +152,11 @@ export interface StoredDiagnosis extends DiagnosisResult {
   status: string;
 }
 
-function rowToResult(row: typeof diagnoses.$inferSelect, imageIds: string[]): StoredDiagnosis {
+function rowToResult(
+  row: typeof diagnoses.$inferSelect,
+  imageIds: string[],
+  videoIds: string[] = [],
+): StoredDiagnosis {
   return {
     id: row.id,
     createdAt: new Date(row.createdAt).toISOString(),
@@ -162,6 +166,7 @@ function rowToResult(row: typeof diagnoses.$inferSelect, imageIds: string[]): St
       brand: row.brand,
       model: row.model,
       imageIds,
+      videoIds,
     },
     diagnosis: row.rawDiagnosis,
     safety: row.safety,
@@ -182,11 +187,15 @@ export async function getDiagnosis(
     .from(diagnoses)
     .where(and(eq(diagnoses.id, id), eq(diagnoses.userId, userId)));
   if (!row) return null;
-  const imgs = await db
-    .select({ id: diagnosisImages.id })
+  const media = await db
+    .select({ id: diagnosisImages.id, r2Key: diagnosisImages.r2Key, kind: diagnosisImages.kind })
     .from(diagnosisImages)
     .where(eq(diagnosisImages.diagnosisId, id));
-  return rowToResult(row, imgs.map((i) => i.id));
+  const imageIds = media.filter((m) => m.kind !== 'video').map((m) => m.id);
+  const videoIds = media
+    .filter((m) => m.kind === 'video')
+    .map((m) => m.r2Key.split('/').pop() ?? m.r2Key);
+  return rowToResult(row, imageIds, videoIds);
 }
 
 export interface DiagnosisListItem {

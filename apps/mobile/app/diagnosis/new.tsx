@@ -28,6 +28,7 @@ export default function NewDiagnosisScreen() {
     description?: string;
     category?: string;
     imageIds?: string;
+    videoIds?: string;
   }>();
   const [state, setState] = useState<State>({ phase: 'loading' });
   const started = useRef(false);
@@ -39,6 +40,7 @@ export default function NewDiagnosisScreen() {
         description: params.description,
         category: (params.category as Category | undefined) ?? null,
         imageIds: parseIds(params.imageIds),
+        videoIds: parseIds(params.videoIds),
       });
       // Le retour haptique du STOP est géré par StopView.
       if (!result.safety.forcedStop) haptics.success();
@@ -51,7 +53,7 @@ export default function NewDiagnosisScreen() {
         canRetry: isRetryable(err),
       });
     }
-  }, [params.description, params.category, params.imageIds]);
+  }, [params.description, params.category, params.imageIds, params.videoIds]);
 
   useEffect(() => {
     if (started.current) return;
@@ -64,7 +66,11 @@ export default function NewDiagnosisScreen() {
       <Screen>
         <LoadingState
           title="Analyzing…"
-          detail="FixIt AI is looking at the problem and checking for safety risks. This can take up to a minute."
+          detail={
+            parseIds(params.videoIds).length > 0
+              ? 'FixIt AI is watching your video and checking for safety risks. Video can take a little longer.'
+              : 'FixIt AI is looking at the problem and checking for safety risks. This can take up to a minute.'
+          }
         />
       </Screen>
     );

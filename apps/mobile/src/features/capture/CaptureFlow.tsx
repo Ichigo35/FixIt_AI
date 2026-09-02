@@ -3,20 +3,23 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { uploadImage } from '@/api/uploads';
+import { MAX_VIDEO_DURATION_SECONDS } from '@fixit/shared';
+import { uploadImage, uploadVideo } from '@/api/uploads';
 import { Button, Card, Text } from '@/components';
 import { friendlyError } from '@/lib/errors';
 import { useTheme } from '@/theme';
 import { CameraCapture } from './CameraCapture';
+import { VideoCapture } from './VideoCapture';
 
-type Mode = 'camera' | 'library';
+type Mode = 'camera' | 'library' | 'video';
 type Status = 'idle' | 'uploading' | 'error';
 
-async function pickFromLibrary(): Promise<string | null> {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    quality: 0.7,
-  });
+async function pickFromLibrary(kind: 'image' | 'video'): Promise<string | null> {
+  const result = await ImagePicker.launchImageLibraryAsync(
+    kind === 'video'
+      ? { mediaTypes: ['videos'], videoMaxDuration: MAX_VIDEO_DURATION_SECONDS, quality: 0.7 }
+      : { mediaTypes: ['images'], quality: 0.7 },
+  );
   if (result.canceled || result.assets.length === 0) return null;
   return result.assets[0]?.uri ?? null;
 }
@@ -24,30 +27,39 @@ async function pickFromLibrary(): Promise<string | null> {
 export function CaptureFlow({ mode }: { mode: Mode }) {
   const theme = useTheme();
   const router = useRouter();
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const isVideo = mode === 'video';
+  const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
 
   const openLibrary = useCallback(async () => {
-    const uri = await pickFromLibrary();
-    if (uri) setPhotoUri(uri);
-  }, []);
+    const uri = await pickFromLibrary(isVideo ? 'video' : 'image');
+    if (uri) setMediaUri(uri);
+  }, [isVideo]);
 
   useEffect(() => {
-    if (mode === 'library' && !photoUri) void openLibrary();
-  }, [mode, photoUri, openLibrary]);
+    if (mode === 'library' && !mediaUri) void openLibrary();
+  }, [mode, mediaUri, openLibrary]);
 
   const analyze = async () => {
-    if (!photoUri) return;
+    if (!mediaUri) return;
     setStatus('uploading');
     setError(null);
     try {
-      const upload = await uploadImage(photoUri, 'problem');
-      router.replace({
-        pathname: '/diagnosis/new',
-        params: { imageIds: JSON.stringify([upload.id]), description: description.trim() },
-      });
+      if (isVideo) {
+        const upload = await uploadVideo(mediaUri);
+        router.replace({
+          pathname: '/diagnosis/new',
+          params: { videoIds: JSON.stringify([upload.id]), description: description.trim() },
+        });
+      } else {
+        const upload = await uploadImage(mediaUri, 'problem');
+        router.replace({
+          pathname: '/diagnosis/new',
+          params: { imageIds: JSON.stringify([upload.id]), description: description.trim() },
+        });
+      }
     } catch (err) {
       setStatus('error');
       setError(friendlyError(err, 'upload'));
@@ -55,11 +67,24 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
   };
 
   // --- Étape capture ---
-  if (!photoUri) {
+  if (!mediaUri) {
     if (mode === 'camera') {
       return (
         <View style={{ flex: 1 }}>
-          <CameraCapture onCaptured={setPhotoUri} />
+          <CameraCapture onCaptured={setMediaUri} />
+        </View>
+      );
+    }
+    if (mode === 'video') {
+      return (
+        <View style={{ flex: 1, gap: theme.spacing.md }}>
+          <VideoCapture onRecorded={setMediaUri} />
+          <Button
+            label="Choose a video from library"
+            variant="secondary"
+            icon="🎞️"
+            onPress={openLibrary}
+          />
         </View>
       );
     }
@@ -75,18 +100,32 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
   // --- Étape preview + description ---
   return (
     <View style={{ gap: theme.spacing.lg }}>
-      <Image
-        source={{ uri: photoUri }}
-        style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: theme.radii.lg }}
-        contentFit="cover"
-      />
+      {isVideo ? (
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+            <Text style={{ fontSize: 26 }}>🎬</Text>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="heading">Video ready</Text>
+              <Text variant="caption" muted>
+                FixIt AI will watch it for movement, sound and intermittent faults.
+              </Text>
+            </View>
+          </View>
+        </Card>
+      ) : (
+        <Image
+          source={{ uri: mediaUri }}
+          style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: theme.radii.lg }}
+          contentFit="cover"
+        />
+      )}
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         <Button
-          label={mode === 'camera' ? 'Retake' : 'Choose another'}
+          label={isVideo ? 'Record again' : mode === 'camera' ? 'Retake' : 'Choose another'}
           variant="secondary"
           onPress={() => {
-            setPhotoUri(null);
+            setMediaUri(null);
             setStatus('idle');
             setError(null);
           }}
@@ -100,7 +139,11 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
             value={description}
             onChangeText={setDescription}
             multiline
-            placeholder="e.g. Water is leaking from underneath when it spins."
+            placeholder={
+              isVideo
+                ? 'e.g. It makes this grinding noise every time it starts to spin.'
+                : 'e.g. Water is leaking from underneath when it spins.'
+            }
             placeholderTextColor={theme.colors.textMuted}
             style={{
               minHeight: 90,

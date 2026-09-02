@@ -65,6 +65,10 @@ export type DiagnosisStatus = (typeof DIAGNOSIS_STATUSES)[number];
 export const IMAGE_KINDS = ['problem', 'label', 'before', 'after', 'step'] as const;
 export type ImageKind = (typeof IMAGE_KINDS)[number];
 
+/** Types de « kind » acceptés par `POST /uploads` : les photos + une courte vidéo. */
+export const UPLOAD_KINDS = [...IMAGE_KINDS, 'video'] as const;
+export type UploadKind = (typeof UPLOAD_KINDS)[number];
+
 export const FREE_MONTHLY_DIAGNOSES = 3;
 
 /** Ordre utilitaire pour comparer deux niveaux de risque. */

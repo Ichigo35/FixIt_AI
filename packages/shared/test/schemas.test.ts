@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { coerceRawDiagnosis, coerceRepairGuide, rawDiagnosisSchema } from '../src/schemas';
+import {
+  coerceRawDiagnosis,
+  coerceRepairGuide,
+  createDiagnosisRequestSchema,
+  rawDiagnosisSchema,
+  uploadRequestSchema,
+} from '../src/schemas';
 
 const valid = {
   problem: 'Blocked drain pump filter',
@@ -50,6 +56,23 @@ describe('rawDiagnosisSchema', () => {
     expect(r.moreInfoNeeded).toEqual([]);
     expect(r.partsAvailability).toBe('unknown');
     expect(r.estimatedStepCount).toBe(4);
+  });
+});
+
+describe('média : photos + vidéo', () => {
+  const uuid = '11111111-1111-1111-1111-111111111111';
+
+  it('createDiagnosisRequestSchema accepte videoIds (max 1) et défaut []', () => {
+    expect(createDiagnosisRequestSchema.parse({}).videoIds).toEqual([]);
+    expect(createDiagnosisRequestSchema.parse({ videoIds: [uuid] }).videoIds).toEqual([uuid]);
+    expect(() => createDiagnosisRequestSchema.parse({ videoIds: [uuid, uuid] })).toThrow();
+  });
+
+  it('uploadRequestSchema accepte video/mp4 + kind=video, rejette un type inconnu', () => {
+    expect(() =>
+      uploadRequestSchema.parse({ contentType: 'video/mp4', kind: 'video' }),
+    ).not.toThrow();
+    expect(() => uploadRequestSchema.parse({ contentType: 'video/avi', kind: 'video' })).toThrow();
   });
 });
 

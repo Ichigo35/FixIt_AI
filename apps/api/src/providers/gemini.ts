@@ -25,7 +25,9 @@ import {
   type VerifyStepInput,
 } from './types';
 
-const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta/models';
+const API_HOST = 'https://generativelanguage.googleapis.com';
+const API_ROOT = `${API_HOST}/v1beta/models`;
+const FILES_UPLOAD = `${API_HOST}/upload/v1beta/files`;
 
 function toBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -40,6 +42,14 @@ function toBase64(buf: ArrayBuffer): string {
 interface GeminiPart {
   text?: string;
   inline_data?: { mime_type: string; data: string };
+  file_data?: { mime_type: string; file_uri: string };
+}
+
+interface GeminiFile {
+  name: string;
+  uri: string;
+  mimeType?: string;
+  state?: 'PROCESSING' | 'ACTIVE' | 'FAILED';
 }
 
 interface GeminiResponse {
@@ -60,7 +70,72 @@ export class GeminiProvider implements AIProvider {
     for (const img of input.images) {
       parts.push({ inline_data: { mime_type: img.contentType, data: toBase64(img.data) } });
     }
-    return this.structured(SYSTEM_PROMPT, GEMINI_RESPONSE_SCHEMA, parts, coerceRawDiagnosis);
+    // Les vidéos passent par l'API Files (trop lourdes pour l'inline base64).
+    const uploaded: string[] = [];
+    for (const video of input.videos ?? []) {
+      const file = await this.uploadAndWaitVideo(video.data, video.contentType);
+      uploaded.push(file.name);
+      parts.push({ file_data: { mime_type: file.mimeType ?? video.contentType, file_uri: file.uri } });
+    }
+    try {
+      return await this.structured(SYSTEM_PROMPT, GEMINI_RESPONSE_SCHEMA, parts, coerceRawDiagnosis);
+    } finally {
+      // Nettoyage best-effort (Gemini purge de toute façon les fichiers après 48 h).
+      await Promise.all(uploaded.map((name) => this.deleteFile(name).catch(() => undefined)));
+    }
+  }
+
+  /** Upload d'une vidéo via l'API Files puis attente de l'état ACTIVE. */
+  private async uploadAndWaitVideo(data: ArrayBuffer, contentType: string): Promise<GeminiFile> {
+    let res: Response;
+    try {
+      res = await fetch(`${FILES_UPLOAD}?uploadType=media`, {
+        method: 'POST',
+        headers: { 'content-type': contentType, 'x-goog-api-key': this.apiKey },
+        body: data,
+      });
+    } catch (err) {
+      throw new AIProviderError('ai_request_failed', `Network error uploading video to Gemini: ${String(err)}`);
+    }
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new AIProviderError('ai_request_failed', `Gemini file upload HTTP ${res.status}: ${detail.slice(0, 300)}`);
+    }
+    const { file } = (await res.json()) as { file?: GeminiFile };
+    if (!file?.name || !file.uri) {
+      throw new AIProviderError('ai_bad_output', 'Gemini file upload returned no file reference');
+    }
+
+    // Polling : une vidéo courte est traitée en quelques secondes.
+    let current = file;
+    for (let i = 0; i < 20 && current.state !== 'ACTIVE'; i++) {
+      if (current.state === 'FAILED') {
+        throw new AIProviderError('ai_request_failed', 'Gemini failed to process the video');
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+      current = await this.getFile(file.name);
+    }
+    if (current.state !== 'ACTIVE') {
+      throw new AIProviderError('ai_request_failed', 'Gemini video processing timed out');
+    }
+    return current;
+  }
+
+  private async getFile(name: string): Promise<GeminiFile> {
+    const res = await fetch(`${API_HOST}/v1beta/${name}`, {
+      headers: { 'x-goog-api-key': this.apiKey },
+    });
+    if (!res.ok) {
+      throw new AIProviderError('ai_request_failed', `Gemini get-file HTTP ${res.status}`);
+    }
+    return (await res.json()) as GeminiFile;
+  }
+
+  private async deleteFile(name: string): Promise<void> {
+    await fetch(`${API_HOST}/v1beta/${name}`, {
+      method: 'DELETE',
+      headers: { 'x-goog-api-key': this.apiKey },
+    });
   }
 
   async generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide> {

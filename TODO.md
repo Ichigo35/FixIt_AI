@@ -130,7 +130,8 @@ Diagnostic à partir d'un **court clip** (~15 s) — mouvement + son + pannes in
 - ✅ **Mobile** : `VideoCapture` (expo-camera `mode="video"` + micro + minuteur + cap 15 s), `CaptureFlow` mode `video` (caméra **ou** galerie `mediaTypes:['videos']`), `uploadVideo` (rejet client >40 Mo), action d'accueil « Filmer une vidéo » **activée** (plus de *SOON*). `app.config.ts` : `microphonePermission` + `recordAudioAndroid`.
 - ✅ **93 tests** (34 shared + 31 api + 28 mobile).
 - ⚠️ **Non testé sur device** (schéma natif + File API réelle). Le pipeline File API n'est couvert qu'en dry-run/typecheck ; les tests API tournent avec le MockProvider.
-- ⏳ **Reste** : redéployer le Worker ; miniature vidéo dans la preview et « My Repairs » ; extraction de durée côté mobile ; lecture de la vidéo dans le détail d'un diagnostic.
+- ✅ **Worker redéployé** (2026-09-02, version `cf8bf14e`, `/health` OK).
+- ⏳ **Reste** : tester la File API réelle sur device ; miniature vidéo dans la preview et « My Repairs » ; extraction de durée côté mobile ; lecture de la vidéo dans le détail d'un diagnostic ; i18n `CaptureFlow`.
 
 ## PHASE 10 — POLISH ✅ (1re passe)
 

@@ -42,7 +42,9 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 - **Sécurité** : `secureHeaders` + `bodyLimit` + rate limiting Cloudflare. RLS écartée (voir Décisions).
 - **93 tests** (34 shared + 31 api + 28 mobile). Base Neon : 1 user (`tcha.jimmy@gmail.com`, admin).
 
-**À faire :** redéployer le Worker (var `ADMIN_EMAILS` + code PHASE 9) · tester vidéo + OAuth Google end-to-end sur device (File API réelle) · système d'abonnement `plan` FREE/PREMIUM pour les non-admins · EAS Build · publier l'écran de consentement Google (hors mode Testing) · i18n sur les écrans restants (dont `CaptureFlow`) · miniature/lecture vidéo dans « My Repairs » · domaine custom = abandonné.
+**À faire :** tester vidéo + OAuth Google end-to-end sur device (File API réelle) · système d'abonnement `plan` FREE/PREMIUM pour les non-admins · EAS Build · publier l'écran de consentement Google (hors mode Testing) · i18n sur les écrans restants (dont `CaptureFlow`) · miniature/lecture vidéo dans « My Repairs » · domaine custom = abandonné.
+
+**Prod à jour :** Worker version `cf8bf14e` (2026-09-02) — `ADMIN_EMAILS` + pipeline vidéo (PHASE 9) déployés.
 
 ## Infra provisionnée
 

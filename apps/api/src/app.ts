@@ -7,6 +7,7 @@ import { isAdminEmail } from './auth/admin';
 import { requireAuth } from './auth/middleware';
 import { getDb } from './db/client';
 import { ensureUser, getQuota } from './db/repos';
+import { HTML_PAGE_PATHS, pages } from './pages';
 import { diagnoses } from './routes/diagnoses';
 import { uploads } from './routes/uploads';
 import { getStorage } from './storage';
@@ -14,6 +15,23 @@ import type { AppEnv } from './types';
 
 export function createApp() {
   const app = new Hono<AppEnv>();
+
+  // CSP adaptée au type de réponse. L'API est du JSON pur → CSP verrouillée
+  // (`default-src 'none'`, posée par `secureHeaders` ci-dessous). Mais quelques
+  // routes servent du HTML (pages légales pour l'écran de consentement OAuth) et
+  // ont besoin d'autoriser les styles inline. Ce middleware est le plus externe
+  // → son code post-`next()` s'exécute APRÈS `secureHeaders` et peut réécrire
+  // l'en-tête pour ces chemins précis.
+  app.use('*', async (c, next) => {
+    await next();
+    if (HTML_PAGE_PATHS.has(new URL(c.req.url).pathname)) {
+      c.res.headers.set(
+        'Content-Security-Policy',
+        "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; " +
+          "base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      );
+    }
+  });
 
   // En-têtes de sécurité. C'est une API JSON (aucun HTML) → CSP verrouillée + pas de sniff/embed.
   app.use(
@@ -39,7 +57,9 @@ export function createApp() {
   app.use('/diagnoses', bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
   app.use('/diagnoses/*', bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
 
-  app.get('/', (c) => c.json({ name: 'FixIt AI API', status: 'ok' }));
+  // Pages publiques HTML : accueil + confidentialité + conditions (écran de
+  // consentement OAuth Google). Voir `pages.ts`.
+  app.route('/', pages);
 
   // Rebond OAuth : Neon Auth (Stack) exige un redirect_uri https ; on renvoie
   // l'utilisateur vers le schéma natif de l'app avec le code d'autorisation.

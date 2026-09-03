@@ -78,6 +78,17 @@ Inchangé : mobile en **React Native + Expo + TypeScript + Expo Router**.
 `pnpm api` (wrangler dev :8788) · `pnpm mobile` (Expo) · `pnpm -r test` · `pnpm -r typecheck` · `pnpm lint`
 Port API dev = **8788** (8787 occupé par un autre projet local de l'utilisateur).
 
+**Tests « live » (consomment du quota Gemini, jamais en CI)** :
+`GEMINI_LIVE_TEST=1 pnpm --filter @fixit/api exec vitest run test/geminiRepairVisual.live.test.ts`
+Ajouter `GEMINI_LIVE_PHOTO=/chemin/photo.jpg` pour vérifier aussi les repères sur photo.
+
+**Vérifier les illustrations sans device** : les scènes sont des compositions pures
+(`SCENE_SPECS`), donc transcriptibles en HTML avec la même géométrie (position absolue en
+px, mêmes formules) — servir la page en local puis capturer avec Chrome headless
+(`--headless --screenshot=… --window-size=…`) permet de relire les 23 scènes d'un coup
+**avant** de dépenser un build APK. Playwright bloque le protocole `file:` → passer par
+`python3 -m http.server`.
+
 ## Build mobile (Android, local)
 
 `android/` et `ios/` sont **gitignore** (générés par `expo prebuild`). Prérequis machine :

@@ -1,3 +1,5 @@
+import { STEP_SCENES } from '@fixit/shared';
+
 /** `responseSchema` Gemini pour le guide de réparation. Compatible `repairGuideSchema`. */
 export const GEMINI_REPAIR_SCHEMA = {
   type: 'OBJECT',
@@ -37,8 +39,33 @@ export const GEMINI_REPAIR_SCHEMA = {
           safetyWarning: { type: 'STRING', nullable: true },
           tools: { type: 'ARRAY', items: { type: 'STRING' } },
           parts: { type: 'ARRAY', items: { type: 'STRING' } },
+          estimatedMinutes: { type: 'INTEGER', nullable: true },
+          checks: { type: 'ARRAY', items: { type: 'STRING' } },
+          // Plan visuel : produit dans le même appel que le guide (pas de requête en plus).
+          visual: {
+            type: 'OBJECT',
+            properties: {
+              scene: { type: 'STRING', enum: [...STEP_SCENES] },
+              subject: { type: 'STRING' },
+              caption: { type: 'STRING' },
+              anchors: {
+                type: 'ARRAY',
+                items: {
+                  type: 'OBJECT',
+                  properties: {
+                    imageIndex: { type: 'INTEGER' },
+                    // [ymin, xmin, ymax, xmax] normalisés 0..1000 (convention Gemini).
+                    box: { type: 'ARRAY', items: { type: 'INTEGER' } },
+                    label: { type: 'STRING' },
+                  },
+                  required: ['imageIndex', 'box', 'label'],
+                },
+              },
+            },
+            required: ['scene', 'subject', 'caption'],
+          },
         },
-        required: ['index', 'title', 'instruction'],
+        required: ['index', 'title', 'instruction', 'visual'],
       },
     },
   },

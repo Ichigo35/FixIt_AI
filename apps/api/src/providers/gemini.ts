@@ -25,6 +25,9 @@ import {
   type VerifyStepInput,
 } from './types';
 
+/** Repos court après un 503 « high demand » : la saturation est passagère. */
+const OVERLOAD_COOLDOWN_MS = 20_000;
+
 const API_HOST = 'https://generativelanguage.googleapis.com';
 const API_ROOT = `${API_HOST}/v1beta/models`;
 const FILES_UPLOAD = `${API_HOST}/upload/v1beta/files`;
@@ -193,6 +196,11 @@ export class GeminiProvider implements AIProvider {
 
   async generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide> {
     const parts: GeminiPart[] = [{ text: buildRepairGuidePrompt(input) }];
+    // Les photos partent dans CE même appel : les repères visuels par étape ne
+    // coûtent donc aucune requête supplémentaire (juste des tokens d'entrée).
+    for (const img of input.images ?? []) {
+      parts.push({ inline_data: { mime_type: img.contentType, data: toBase64(img.data) } });
+    }
     return this.structured(REPAIR_SYSTEM_PROMPT, GEMINI_REPAIR_SCHEMA, parts, coerceRepairGuide);
   }
 
@@ -264,6 +272,14 @@ export class GeminiProvider implements AIProvider {
           'ai_rate_limited',
           `Gemini ${this.model} quota/rate limit (HTTP 429): ${detail.slice(0, 300)}`,
           { retryAfterMs: parseRetryAfterMs(detail) },
+        );
+      }
+      if (res.status === 503) {
+        // « High demand » : passager. Traité comme un 429 côté bascule de modèle.
+        throw new AIProviderError(
+          'ai_overloaded',
+          `Gemini ${this.model} saturé (HTTP 503): ${detail.slice(0, 300)}`,
+          { retryAfterMs: OVERLOAD_COOLDOWN_MS },
         );
       }
       throw new AIProviderError('ai_request_failed', `Gemini HTTP ${res.status}: ${detail.slice(0, 300)}`);

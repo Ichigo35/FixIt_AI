@@ -29,8 +29,8 @@ export function _resetGeminiCooldowns(): void {
  * Bascule automatique entre plusieurs modèles Gemini.
  *
  * Le premier modèle de la liste est le **préféré** ; en cas de 429 (quota ou limite
- * de débit), il est mis en repos pour la durée conseillée par Gemini (`RetryInfo`,
- * sinon 60 s) et l'appel bascule sur le modèle suivant. Dès que le repos est écoulé,
+ * de débit) ou de 503 (« high demand »), il est mis en repos pour la durée conseillée
+ * par Gemini (`RetryInfo`, sinon 60 s / 20 s) et l'appel bascule sur le modèle suivant. Dès que le repos est écoulé,
  * le modèle préféré redevient prioritaire — la bascule est donc réversible sans
  * intervention.
  */
@@ -86,14 +86,18 @@ export class FailoverGeminiProvider implements AIProvider {
         this.lastUsedModel = model;
         return result;
       } catch (err) {
-        if (!(err instanceof AIProviderError) || err.code !== 'ai_rate_limited') throw err;
+        const failoverable =
+          err instanceof AIProviderError &&
+          (err.code === 'ai_rate_limited' || err.code === 'ai_overloaded');
+        if (!failoverable) throw err;
         const wait = Math.min(err.retryAfterMs ?? DEFAULT_COOLDOWN_MS, MAX_COOLDOWN_MS);
         cooldownUntil.set(model, Date.now() + wait);
         lastError = err;
         const next = ordered[i + 1];
         if (next) {
+          const why = err.code === 'ai_overloaded' ? 'saturé' : 'en limite de quota';
           console.warn(
-            `[gemini] ${model} en limite de quota (repos ~${Math.round(wait / 1000)} s) → bascule sur ${next}`,
+            `[gemini] ${model} ${why} (repos ~${Math.round(wait / 1000)} s) → bascule sur ${next}`,
           );
         }
       }
@@ -101,7 +105,10 @@ export class FailoverGeminiProvider implements AIProvider {
 
     throw (
       lastError ??
-      new AIProviderError('ai_rate_limited', 'Tous les modèles Gemini configurés sont en limite de quota.')
+      new AIProviderError(
+        'ai_rate_limited',
+        'Tous les modèles Gemini configurés sont en limite de quota ou saturés.',
+      )
     );
   }
 }

@@ -142,6 +142,41 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(meBody.quota.used).toBe(0);
   });
 
+  it('guide illustré : chaque étape a un plan visuel, la photo reçoit un repère', async () => {
+    const uid = freshUser();
+    const app = createApp();
+    const e = env();
+
+    const up = await app.request(
+      '/uploads',
+      { method: 'POST', headers: { 'content-type': 'image/jpeg', ...devAuth(uid) }, body: jpegBytes },
+      e,
+    );
+    const { id: imageId } = (await up.json()) as { id: string };
+
+    const created = (await (
+      await post(app, { description: 'the drain filter is blocked', imageIds: [imageId] }, e, uid)
+    ).json()) as Record<string, any>;
+
+    const res = await app.request(
+      `/diagnoses/${created.id}/repair-guide`,
+      { headers: devAuth(uid) },
+      e,
+    );
+    expect(res.status).toBe(200);
+    const guide = (await res.json()) as Record<string, any>;
+
+    // Toutes les étapes sont illustrables (plan visuel présent).
+    for (const step of guide.steps) {
+      expect(step.visual).toBeTruthy();
+      expect(typeof step.visual.scene).toBe('string');
+    }
+    // La photo du diagnostic a bien été transmise au provider -> repère posé.
+    const anchored = guide.steps.filter((s: any) => s.visual.anchors.length > 0);
+    expect(anchored.length).toBeGreaterThan(0);
+    expect(anchored[0].visual.anchors[0].imageIndex).toBe(0);
+  });
+
   it('isolation : un autre utilisateur ne voit pas le diagnostic (404)', async () => {
     const uid = freshUser();
     const intruder = freshUser();

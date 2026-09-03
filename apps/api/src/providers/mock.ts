@@ -85,6 +85,11 @@ export class MockProvider implements AIProvider {
 
   async generateRepairGuide(input: RepairGuideInput): Promise<RepairGuide> {
     const d = input.diagnosis;
+    // Un repère sur la 1re photo si elle existe : le rendu « photo annotée »
+    // est donc exerçable sans clé IA (dev + tests).
+    const anchors = (input.images?.length ?? 0) > 0
+      ? [{ imageIndex: 0, box: [250, 250, 750, 750], label: 'Affected area' }]
+      : [];
     return coerceRepairGuide({
       summary: `Placeholder guide for: ${d.problem} (no AI key configured).`,
       difficulty: d.difficulty,
@@ -103,6 +108,14 @@ export class MockProvider implements AIProvider {
           safetyWarning: 'Do not work on the item while it is connected to mains power.',
           tools: [],
           parts: [],
+          estimatedMinutes: 2,
+          checks: ['The item is unplugged and cannot switch on.'],
+          visual: {
+            scene: 'power-off',
+            subject: 'the mains plug',
+            caption: 'Unplug the item before anything else',
+            anchors: [],
+          },
         },
         {
           index: 1,
@@ -110,6 +123,14 @@ export class MockProvider implements AIProvider {
           instruction: `Look closely at the area related to: ${d.problem}. Note anything worn, loose or broken.`,
           tools: ['Flashlight'],
           parts: [],
+          estimatedMinutes: 5,
+          checks: ['You can see the part the fault points to.'],
+          visual: {
+            scene: 'inspect',
+            subject: 'the affected area',
+            caption: 'Light up the area and look for damage',
+            anchors,
+          },
         },
         {
           index: 2,
@@ -117,6 +138,14 @@ export class MockProvider implements AIProvider {
           instruction: d.recommendedAction,
           tools: [],
           parts: d.parts.map((p) => p.name),
+          estimatedMinutes: 15,
+          checks: ['The worn part is out.', 'The new part sits flush.'],
+          visual: {
+            scene: 'replace',
+            subject: 'the worn part',
+            caption: 'Swap the worn part for the new one',
+            anchors,
+          },
         },
         {
           index: 3,
@@ -125,6 +154,14 @@ export class MockProvider implements AIProvider {
             'Put everything back together, reconnect the supply and check that the problem is resolved.',
           tools: [],
           parts: [],
+          estimatedMinutes: 8,
+          checks: ['Every screw is back in.', 'The fault is gone.'],
+          visual: {
+            scene: 'reassemble',
+            subject: 'the cover',
+            caption: 'Close it up, then power on and test',
+            anchors: [],
+          },
         },
       ],
     });

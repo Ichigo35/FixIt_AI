@@ -9,6 +9,8 @@ const NETWORK_MESSAGE =
 /** Messages par code d'erreur API, indépendants du contexte. */
 const BY_CODE: Record<string, string> = {
   ai_request_failed: 'The AI service is unavailable right now. Please try again in a moment.',
+  ai_overloaded: 'The AI is busy right now. Give it a few seconds and try again.',
+  ai_rate_limited: "The AI has hit its usage limit for now. Try again in a minute.",
   quota_exceeded:
     "You've used all your free diagnoses this month. Upgrade to Premium for unlimited.",
   need_photo_or_description: 'Add a photo or a description first.',

@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import {
   assessDiagnosis,
   createDiagnosisRequestSchema,
@@ -33,6 +33,24 @@ import { AIProviderError, getAIProvider } from '../providers';
 import type { DiagnoseImage, DiagnoseVideo } from '../providers/types';
 import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
+
+/**
+ * Nombre de photos jointes à la génération du guide. Assez pour situer l'objet
+ * et poser des repères, sans faire exploser les tokens d'entrée (donc le quota).
+ */
+const GUIDE_PHOTO_LIMIT = 3;
+
+/** Statut HTTP d'une panne du fournisseur IA (même règle sur toutes les routes). */
+function aiStatus(code: AIProviderError['code']): 429 | 502 | 503 | 422 {
+  if (code === 'ai_rate_limited') return 429;
+  if (code === 'ai_overloaded') return 503;
+  if (code === 'ai_request_failed') return 502;
+  return 422;
+}
+
+function aiErrorResponse(c: Context<AppEnv>, err: AIProviderError) {
+  return c.json({ error: err.code, message: err.message }, aiStatus(err.code));
+}
 
 export const diagnoses = new Hono<AppEnv>();
 diagnoses.use('*', requireAuth);
@@ -103,12 +121,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       videos,
     });
   } catch (err) {
-    if (err instanceof AIProviderError) {
-      return c.json(
-        { error: err.code, message: err.message },
-        err.code === 'ai_request_failed' ? 502 : err.code === 'ai_rate_limited' ? 429 : 422,
-      );
-    }
+    if (err instanceof AIProviderError) return aiErrorResponse(c, err);
     throw err;
   }
 
@@ -220,8 +233,24 @@ diagnoses.get('/:id/repair-guide', rateLimit('DIAGNOSE_RL'), async (c) => {
     return c.json({ error: 'guide_unavailable', reason: 'forced_stop', safety: diagnosis.safety }, 409);
   }
 
-  const cached = await getRepairGuide(db, id);
+  // `?refresh=1` régénère un guide déjà en cache (ex. guide créé avant les
+  // illustrations). Consomme un appel IA — la route est déjà rate-limitée.
+  const refresh = c.req.query('refresh') === '1';
+  const cached = refresh ? null : await getRepairGuide(db, id);
   if (cached) return c.json(cached);
+
+  // Photos du problème (max GUIDE_PHOTO_LIMIT) : elles voyagent dans l'appel de
+  // génération pour que le modèle pose ses repères sur les vraies photos.
+  const guideImages: DiagnoseImage[] = [];
+  const storage = getStorage(c.env);
+  if (storage) {
+    for (const imageId of diagnosis.input.imageIds.slice(0, GUIDE_PHOTO_LIMIT)) {
+      const obj = await storage.get(`uploads/${imageId}`).catch(() => null);
+      if (!obj) continue;
+      if (obj.metadata.userid && obj.metadata.userid !== userId) continue;
+      guideImages.push({ contentType: obj.contentType || 'image/jpeg', data: obj.data });
+    }
+  }
 
   const provider = getAIProvider(c.env);
   let guide;
@@ -233,14 +262,10 @@ diagnoses.get('/:id/repair-guide', rateLimit('DIAGNOSE_RL'), async (c) => {
       brand: diagnosis.input.brand,
       model: diagnosis.input.model,
       adminOverride: overrideStop,
+      images: guideImages,
     });
   } catch (err) {
-    if (err instanceof AIProviderError) {
-      return c.json(
-        { error: err.code, message: err.message },
-        err.code === 'ai_request_failed' ? 502 : err.code === 'ai_rate_limited' ? 429 : 422,
-      );
-    }
+    if (err instanceof AIProviderError) return aiErrorResponse(c, err);
     throw err;
   }
 
@@ -328,12 +353,7 @@ diagnoses.post('/:id/repair-session/verify', rateLimit('DIAGNOSE_RL'), async (c)
       image: { contentType: obj.contentType || 'image/jpeg', data: obj.data },
     });
   } catch (err) {
-    if (err instanceof AIProviderError) {
-      return c.json(
-        { error: err.code, message: err.message },
-        err.code === 'ai_request_failed' ? 502 : err.code === 'ai_rate_limited' ? 429 : 422,
-      );
-    }
+    if (err instanceof AIProviderError) return aiErrorResponse(c, err);
     throw err;
   }
 

@@ -28,6 +28,13 @@ export interface RepairGuideInput {
   brand?: string | null;
   model?: string | null;
   /**
+   * Photos du problème (mêmes octets qu'au diagnostic, dans le même ordre).
+   * Elles voyagent dans **l'appel de génération du guide déjà existant** : le
+   * modèle peut donc poser des repères (`visual.anchors`) sur les vraies photos
+   * de l'utilisateur sans consommer une requête de quota supplémentaire.
+   */
+  images?: DiagnoseImage[];
+  /**
    * `true` quand un administrateur force la génération d'un guide alors que la
    * classification de sécurité imposait un STOP. Le guide est produit malgré tout
    * mais avec des avertissements de sécurité renforcés.
@@ -60,7 +67,9 @@ export type AIProviderErrorCode =
   | 'ai_bad_output'
   | 'ai_request_failed'
   /** Quota/limite de débit atteint (HTTP 429) — un autre modèle peut prendre le relais. */
-  | 'ai_rate_limited';
+  | 'ai_rate_limited'
+  /** Modèle temporairement saturé (HTTP 503 UNAVAILABLE) — idem, un autre modèle peut répondre. */
+  | 'ai_overloaded';
 
 export class AIProviderError extends Error {
   /** Délai conseillé avant de réessayer ce modèle (issu du corps `RetryInfo`), en ms. */

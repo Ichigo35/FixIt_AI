@@ -269,6 +269,44 @@ OAuth GitHub/Apple = plus tard.
 - **116 tests** (44 shared + **44 api** + 28 mobile) — `apps/api/test/geminiFailover.test.ts` (6 tests : `fetch` mocké + fake timers ; bascule, repos/reprise, repos par défaut, tous 429, non-429 sans bascule, 1 seul modèle).
 - ✅ **Worker déployé (2026-09-02, version `6daeb673`)** — `GEMINI_FALLBACK_MODEL=gemini-3.5-flash` visible dans les bindings, `/health` OK.
 
+### Étapes de réparation illustrées + refonte UI/UX du guide ✅ (2026-09-03)
+
+**Problème** : le guide n'était que du texte — impraticable les mains dans l'appareil.
+
+**Toutes les pistes d'illustration examinées**, et ce qui a été retenu :
+
+| Piste | Verdict | Coût quota |
+|---|---|---|
+| **Schéma vectoriel natif par scène** | ✅ retenu — couvre **100 %** des étapes, hors ligne | **0** |
+| **Photo de l'utilisateur annotée** (zone de l'étape mise en évidence) | ✅ retenu — repères posés par l'IA **dans l'appel de guide existant** | **0 requête en plus** (tokens d'entrée seulement) |
+| Régénération d'un ancien guide pour obtenir les visuels | ✅ retenu (`?refresh=1`, bouton dans l'app) | 1 appel, à la demande |
+| **Génération d'images par IA** (`gemini-3.1-flash-image`, `gemini-3-pro-image`…) | ❌ **impossible** : palier gratuit à `limit: 0` sur tous les modèles image (429 `RESOURCE_EXHAUSTED` mesuré le 2026-09-03, les autres ids répondent 404). Nécessiterait la facturation Google. | — |
+| SVG généré par le modèle texte | ❌ écarté : tokens de sortie ×5, sortie fragile, nécessiterait `react-native-svg` (module natif) | — |
+
+**1. Vocabulaire de scènes** — `packages/shared/src/scenes.ts` : 23 scènes (`power-off`, `unscrew`, `pry`, `disconnect`, `unclog`, `lubricate`, `reassemble`…), chacune décrite par une **composition pure** `{ body, focus, tool|stepIcon, motion, tone }` (`SCENE_SPECS`). `sceneForStep()` déduit la scène du texte (mots-clés FR+EN, **correspondance début de mot** — sans quoi « **dé**visser » tombait dans « visser », bug attrapé par les tests). `resolveScene()` = scène de l'IA si valide, sinon déduction ⇒ **aucune étape sans illustration**, y compris les guides déjà en cache et le `MockProvider`.
+
+**2. Plan visuel produit par l'IA, sans requête supplémentaire** — `repairStepSchema` gagne `visual { scene, subject, caption, anchors[] }`, `checks[]` (0-4) et `estimatedMinutes` ; `GEMINI_REPAIR_SCHEMA` et `REPAIR_SYSTEM_PROMPT` étendus. La route `repair-guide` joint désormais **jusqu'à 3 photos du diagnostic** à l'appel de génération (`GUIDE_PHOTO_LIMIT`) : même nombre de requêtes, donc **même consommation de quota en requêtes**. `sanitizeVisual()` écarte un repère mal formé au lieu de faire échouer tout le guide.
+
+**3. Repères sur la photo de l'utilisateur** — convention Gemini `box_2d = [ymin, xmin, ymax, xmax]` normalisée 0..1000 + `imageIndex` (dans `input.imageIds`). **Précision vérifiée en live** sur une image de test : vis à (190,180) et (710,180) px → boîtes renvoyées centrées sur (210,255) et (790,255) ‰ = exactement les vis.
+
+**4. Rendu mobile** — `apps/mobile/src/features/repair/illustration/` :
+- `SceneIllustration.tsx` : moteur de dessin **100 % primitives React Native** (Views, bordures, transforms, triangles par bordures, arcs par anneau + pointes tangentes) sur un canevas virtuel 100×62,5 unités. **Pas de `react-native-svg`, donc pas de module natif ni de rebuild.** Gestes animés (`Animated`, driver natif) : rotation h/ah, flèches entrée/sortie/haut/bas, balayage, gouttes, chaleur, pulsation. Respecte **« Réduire les animations »** (`useReducedMotion`) : pose figée, toujours lisible.
+- `PhotoAnchorView.tsx` : photo de l'utilisateur en `contentFit="contain"` dans un conteneur au ratio exact de l'image (mesuré via `onLoad`) ⇒ les boîtes se posent en pourcentages, sans calcul de recadrage. Effet **projecteur** (4 voiles), cadre pulsant, étiquette, appui = voir toute la photo.
+- `geometry.ts` (pur, testé) : `anchorRect` (bornage, coordonnées inversées, agrandissement d'un repère minuscule), `pickAnchor`, `labelBelow`.
+- `StepVisual.tsx` : puce du type de geste + bascule **Photo / Schéma** quand un repère existe (photo par défaut) + légende.
+
+**5. Refonte UI/UX du guide** (`RepairGuideView.tsx`) :
+- **Aperçu** : méta compacte, avertissements, **« LE DÉROULÉ »** = toutes les étapes cliquables (médaillon coloré par type, durée, ⚠ si danger), outils en **grille de tuiles**, reprise « Reprendre à l'étape N ».
+- **Étape** : en-tête fixe (retour au déroulé + « Étape n/N » + **barre de progression animée** + **rail d'étapes** scrollable et cliquable, ✓ pour les faites), **illustration en tête**, instruction en 24 px d'interligne, **points de contrôle cochables** (`checks`), carte sécurité, puces outils, vérification photo, **barre d'actions fixe en bas** (plus besoin de scroller pour continuer).
+- **`useKeepAwake()`** : l'écran ne s'éteint plus pendant la réparation (fourni par `expo`, déjà autolinké).
+- **i18n FR/EN complète** du guide (namespace `repair.*`, 23 libellés de scènes, verdicts, `StepCheck`) — l'un des points « à faire » du backlog.
+
+**6. Robustesse Gemini — 503 « high demand »** (rencontré en live pendant la mise au point) : nouveau code `ai_overloaded`, `FailoverGeminiProvider` bascule aussi sur 503 (repos court 20 s), route → **503**. Mapping des erreurs IA factorisé (`aiStatus`/`aiErrorResponse`). Vérifié en live : `gemini-3.6-flash saturé → bascule sur gemini-3.5-flash`, guide produit.
+
+**Tests : 143** (60 shared + 47 api + 36 mobile) + 2 tests **live** opt-in (`GEMINI_LIVE_TEST=1`, `apps/api/test/geminiRepairVisual.live.test.ts`) qui parlent au vrai modèle — jamais joués en CI.
+
+**Vérification visuelle** : les 23 scènes ont été rendues hors app (transcription HTML de la même géométrie + capture headless) avant le build, pour valider les compositions.
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

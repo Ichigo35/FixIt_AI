@@ -80,6 +80,40 @@ export function skillForDifficulty(
   }
 }
 
+/**
+ * Repère sur une photo envoyée par l'utilisateur : « la vis est ICI ».
+ * `box` suit la convention Gemini : [ymin, xmin, ymax, xmax] normalisés 0..1000.
+ * `imageIndex` pointe dans `DiagnosisResult.input.imageIds` (même ordre).
+ */
+export const photoAnchorSchema = z.object({
+  imageIndex: z.number().int().min(0).max(5),
+  box: z.tuple([
+    z.number().min(0).max(1000),
+    z.number().min(0).max(1000),
+    z.number().min(0).max(1000),
+    z.number().min(0).max(1000),
+  ]),
+  label: z.string().min(1).max(60),
+});
+export type PhotoAnchor = z.infer<typeof photoAnchorSchema>;
+
+/**
+ * Plan visuel d'une étape, produit dans le même appel IA que le guide
+ * (aucune requête supplémentaire, donc aucun quota supplémentaire).
+ * `scene` est validée côté client via `coerceScene` — on la garde en `string`
+ * ici pour ne jamais rejeter un guide à cause d'un libellé inattendu.
+ */
+export const stepVisualSchema = z.object({
+  scene: z.string().max(40).default('generic'),
+  /** Ce que l'on regarde, en 2-4 mots (« les 4 vis du panneau arrière »). */
+  subject: z.string().max(120).default(''),
+  /** Légende courte sous l'illustration (« Dévisser dans le sens antihoraire »). */
+  caption: z.string().max(140).default(''),
+  /** Repères sur les photos de l'utilisateur (0 à 3). */
+  anchors: z.array(photoAnchorSchema).max(3).default([]),
+});
+export type StepVisual = z.infer<typeof stepVisualSchema>;
+
 export const repairStepSchema = z.object({
   index: z.number().int().nonnegative(),
   title: z.string().min(1),
@@ -87,6 +121,11 @@ export const repairStepSchema = z.object({
   safetyWarning: z.string().min(1).nullable().optional(),
   tools: z.array(z.string().min(1)).default([]),
   parts: z.array(z.string().min(1)).default([]),
+  /** Plan visuel (facultatif : les guides mis en cache avant cette version n'en ont pas). */
+  visual: stepVisualSchema.nullable().optional(),
+  /** Points de contrôle à cocher pour valider l'étape (0 à 4). */
+  checks: z.array(z.string().min(1).max(160)).max(4).default([]),
+  estimatedMinutes: z.number().int().positive().max(600).nullable().optional(),
 });
 export type RepairStep = z.infer<typeof repairStepSchema>;
 
@@ -114,10 +153,40 @@ export function coerceRepairGuide(input: unknown): RepairGuide {
     obj.steps = obj.steps.map((s, i) => {
       const step = (typeof s === 'object' && s !== null ? s : {}) as Record<string, unknown>;
       step.index = i;
+      step.visual = sanitizeVisual(step.visual);
       return step;
     });
   }
   return repairGuideSchema.parse(obj);
+}
+
+/**
+ * Nettoie le plan visuel produit par le modèle : un repère photo mal formé
+ * (boîte incomplète, hors bornes, inversée) est **écarté** plutôt que de faire
+ * échouer tout le guide. Renvoie `null` si rien d'exploitable.
+ */
+function sanitizeVisual(input: unknown): unknown {
+  if (typeof input !== 'object' || input === null) return null;
+  const v = { ...(input as Record<string, unknown>) };
+  if (typeof v.scene !== 'string') delete v.scene;
+  if (typeof v.subject !== 'string') delete v.subject;
+  if (typeof v.caption !== 'string') delete v.caption;
+
+  const raw = Array.isArray(v.anchors) ? v.anchors : [];
+  v.anchors = raw.flatMap((a) => {
+    if (typeof a !== 'object' || a === null) return [];
+    const anchor = a as Record<string, unknown>;
+    const box = Array.isArray(anchor.box) ? anchor.box.map(Number) : [];
+    if (box.length !== 4 || box.some((n) => !Number.isFinite(n) || n < 0 || n > 1000)) return [];
+    const [ymin, xmin, ymax, xmax] = box as [number, number, number, number];
+    // Une boîte dégénérée (hauteur ou largeur nulle) n'est pas affichable.
+    if (ymax - ymin < 1 || xmax - xmin < 1) return [];
+    const label = typeof anchor.label === 'string' ? anchor.label.trim().slice(0, 60) : '';
+    const index = Number(anchor.imageIndex);
+    if (!label || !Number.isInteger(index) || index < 0 || index > 5) return [];
+    return [{ imageIndex: index, box: [ymin, xmin, ymax, xmax], label }];
+  });
+  return v;
 }
 
 /* --------------------------- Réparation interactive --------------------------- */

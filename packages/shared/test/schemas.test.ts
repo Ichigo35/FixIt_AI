@@ -102,4 +102,47 @@ describe('coerceRepairGuide', () => {
   it('rejette un guide sans étapes', () => {
     expect(() => coerceRepairGuide({ ...guide, steps: [] })).toThrow();
   });
+
+  it('conserve un plan visuel valide', () => {
+    const r = coerceRepairGuide({
+      ...guide,
+      steps: [
+        {
+          ...guide.steps[0],
+          checks: ['Plus une goutte au robinet'],
+          estimatedMinutes: 3,
+          visual: {
+            scene: 'water-off',
+            subject: 'les robinets d’arrêt',
+            caption: 'Fermer les deux robinets sous l’évier',
+            anchors: [{ imageIndex: 0, box: [100, 200, 400, 500], label: 'Robinet' }],
+          },
+        },
+      ],
+    });
+    expect(r.steps[0]?.visual?.scene).toBe('water-off');
+    expect(r.steps[0]?.visual?.anchors).toHaveLength(1);
+    expect(r.steps[0]?.checks).toEqual(['Plus une goutte au robinet']);
+    expect(r.steps[0]?.estimatedMinutes).toBe(3);
+  });
+
+  it('écarte les repères inexploitables sans faire échouer le guide', () => {
+    const bad = (anchor: unknown) =>
+      coerceRepairGuide({
+        ...guide,
+        steps: [{ ...guide.steps[0], visual: { scene: 'unscrew', anchors: [anchor] } }],
+      }).steps[0]?.visual?.anchors;
+
+    expect(bad({ imageIndex: 0, box: [0, 0, 100], label: 'x' })).toEqual([]); // boîte incomplète
+    expect(bad({ imageIndex: 0, box: [0, 0, 1200, 100], label: 'x' })).toEqual([]); // hors bornes
+    expect(bad({ imageIndex: 0, box: [50, 50, 50, 50], label: 'x' })).toEqual([]); // dégénérée
+    expect(bad({ imageIndex: 0, box: [0, 0, 100, 100] })).toEqual([]); // sans libellé
+    expect(bad({ imageIndex: 9, box: [0, 0, 100, 100], label: 'x' })).toEqual([]); // photo absente
+  });
+
+  it('accepte un guide sans plan visuel (versions antérieures)', () => {
+    const r = coerceRepairGuide(guide);
+    expect(r.steps[0]?.visual).toBeNull();
+    expect(r.steps[0]?.checks).toEqual([]);
+  });
 });

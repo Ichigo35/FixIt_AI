@@ -62,6 +62,26 @@ Keep each step short, concrete and doable by a careful non-expert. 3–12 steps 
 Do NOT invent part prices — set "priceKnown": false and leave prices null unless you are
 genuinely confident. Use "optional" for nice-to-have tools/materials.
 
+EVERY step must also carry a "visual" object. The app draws the step from it, so the user
+never has to read a wall of text:
+- "scene": pick the ONE value from the schema enum that matches the physical gesture of
+  the step (e.g. "unscrew" to remove screws, "pry" to unclip a cover, "disconnect" to
+  unplug a connector, "measure" for a multimeter reading, "reassemble" to close up).
+- "subject": 2 to 5 words naming exactly what the user acts on ("the four rear panel
+  screws", "the pump filter cap").
+- "caption": ONE short imperative line printed under the drawing, max 12 words.
+- "anchors": ONLY when photos of the item are attached. Point at the exact area of the
+  user's own photo this step is about, so the app can highlight it:
+  {"imageIndex": <0-based index of the attached photo>, "box": [ymin, xmin, ymax, xmax]
+  normalised to 0-1000, "label": 2 to 4 words}. Use 0 to 2 anchors per step, and only for
+  an area you can genuinely see in that photo. NO anchor is much better than a guessed
+  one — a wrong highlight sends the user to the wrong part.
+
+Each step also gets "checks": 1 to 3 short statements the user can verify to know the step
+is done ("The panel lifts off with no resistance"), and "estimatedMinutes".
+
+Write the guide in the same language as the user's own words.
+
 Return ONLY JSON matching the schema.`;
 
 export function buildRepairGuidePrompt(input: RepairGuideInput): string {
@@ -80,6 +100,12 @@ export function buildRepairGuidePrompt(input: RepairGuideInput): string {
   if (d.tools.length) lines.push(`Tools already suggested: ${d.tools.join(', ')}`);
   if (d.parts.length) lines.push(`Parts already suggested: ${d.parts.map((p) => p.name).join(', ')}`);
   if (input.description?.trim()) lines.push(`User's own words: "${input.description.trim()}"`);
+  const photoCount = input.images?.length ?? 0;
+  lines.push(
+    photoCount > 0
+      ? `${photoCount} photo(s) of the actual item are attached, in order (imageIndex 0 to ${photoCount - 1}). Use them to name real, visible parts, and to place "anchors" on the exact areas each step is about.`
+      : 'No photo of the item is attached — leave every "anchors" array empty.',
+  );
   if (input.adminOverride) {
     lines.push(
       'IMPORTANT: this item was flagged as professional-only because of a safety hazard, ' +

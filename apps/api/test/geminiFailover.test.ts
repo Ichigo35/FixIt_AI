@@ -33,6 +33,15 @@ function rateLimitedResponse(retryDelay?: string): Response {
   );
 }
 
+function overloadedResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      error: { code: 503, status: 'UNAVAILABLE', message: 'This model is currently experiencing high demand.' },
+    }),
+    { status: 503 },
+  );
+}
+
 /** `fetch` factice : route selon le modèle présent dans l'URL. */
 function mockFetch(byModel: Record<string, () => Response>) {
   return vi.fn(async (input: RequestInfo | URL) => {
@@ -73,6 +82,29 @@ describe('FailoverGeminiProvider', () => {
     const models = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(models.some((u) => u.includes(PRIMARY))).toBe(true);
     expect(models.some((u) => u.includes(FALLBACK))).toBe(true);
+  });
+
+  it('bascule aussi quand le préféré est saturé (503 « high demand »)', async () => {
+    const fetchMock = mockFetch({
+      [PRIMARY]: () => overloadedResponse(),
+      [FALLBACK]: () => okResponse(),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const provider = new FailoverGeminiProvider('key', [PRIMARY, FALLBACK]);
+    const result = await provider.diagnose(input);
+
+    expect(result.problem).toContain('door seal');
+    expect(provider.model).toBe(FALLBACK);
+  });
+
+  it('remonte ai_overloaded quand tous les modèles sont saturés', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch({ [PRIMARY]: () => overloadedResponse(), [FALLBACK]: () => overloadedResponse() }),
+    );
+    const provider = new FailoverGeminiProvider('key', [PRIMARY, FALLBACK]);
+    await expect(provider.diagnose(input)).rejects.toMatchObject({ code: 'ai_overloaded' });
   });
 
   it('le préféré reste évité pendant le repos puis reprend la main après', async () => {

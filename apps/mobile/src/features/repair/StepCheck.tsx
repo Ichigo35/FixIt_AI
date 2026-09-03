@@ -6,6 +6,7 @@ import { uploadImage } from '@/api/uploads';
 import { verifyStep } from '@/api/repairSession';
 import { VERDICT_META } from './verdictMeta';
 import { Button, Card, FadeInView, Text } from '@/components';
+import { t } from '@/i18n';
 import { friendlyError } from '@/lib/errors';
 import { haptics } from '@/lib/haptics';
 import { useTheme } from '@/theme';
@@ -95,7 +96,7 @@ export function StepCheck({
       <FadeInView offset={10}>
         <Card style={{ backgroundColor: toneBg(meta.tone), borderColor: toneColor(meta.tone) }}>
           <Text variant="caption" color={toneColor(meta.tone)} accessibilityRole="header">
-            {meta.emoji} {meta.label.toUpperCase()}
+            {meta.emoji} {t(`repair.verdict.${phase.verdict}`).toUpperCase()}
           </Text>
           <Text>{phase.summary}</Text>
           {phase.advice.map((a) => (
@@ -108,7 +109,11 @@ export function StepCheck({
             style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: theme.radii.md, marginTop: theme.spacing.sm }}
             contentFit="cover"
           />
-          <Button label="Check again" variant="secondary" onPress={() => setPhase({ name: 'idle' })} />
+          <Button
+            label={t('repair.checkAgain')}
+            variant="secondary"
+            onPress={() => setPhase({ name: 'idle' })}
+          />
         </Card>
       </FadeInView>
     );
@@ -117,16 +122,16 @@ export function StepCheck({
   return (
     <Card>
       <Text variant="caption" muted>
-        CHECK YOUR WORK · OPTIONAL
+        {t('repair.checkTitle')}
       </Text>
-      <Text muted>Take a photo of “{step.title}” and FixIt AI will check it.</Text>
+      <Text muted>{t('repair.checkBody', { title: step.title })}</Text>
       {phase.name === 'error' ? (
         <Text variant="caption" color={theme.colors.danger}>
           {phase.message}
         </Text>
       ) : null}
       <Button
-        label={phase.name === 'working' ? 'Checking…' : '📷 Check with a photo'}
+        label={phase.name === 'working' ? t('repair.checking') : `📷 ${t('repair.checkCta')}`}
         variant="secondary"
         loading={phase.name === 'working'}
         onPress={run}

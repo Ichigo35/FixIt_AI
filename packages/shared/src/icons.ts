@@ -59,7 +59,7 @@ export const STEP_ICON_IDS = [
 export type StepIconId = (typeof STEP_ICON_IDS)[number];
 
 /** Minuscule + suppression des accents + espaces/apostrophes normalisés. */
-function normalize(input: string): string {
+export function normalizeLabel(input: string): string {
   return input
     .toLowerCase()
     .normalize('NFD')
@@ -103,7 +103,7 @@ const TOOL_RULES: ReadonlyArray<readonly [ToolIconId, readonly string[]]> = [
 
 /** Nom d'outil libre → identifiant d'icône (repli `toolbox`). */
 export function toolIconId(name: string): ToolIconId {
-  const n = normalize(name);
+  const n = normalizeLabel(name);
   if (!n) return 'toolbox';
   for (const [id, keywords] of TOOL_RULES) {
     for (const kw of keywords) {
@@ -137,8 +137,8 @@ const STEP_RULES: ReadonlyArray<readonly [StepIconId, readonly string[]]> = [
  * Repli : `generic`.
  */
 export function stepIconId(step: { title?: string | null; instruction?: string | null }): StepIconId {
-  const title = normalize(step.title ?? '');
-  const body = normalize(step.instruction ?? '');
+  const title = normalizeLabel(step.title ?? '');
+  const body = normalizeLabel(step.instruction ?? '');
   for (const source of [title, body]) {
     if (!source) continue;
     for (const [id, keywords] of STEP_RULES) {

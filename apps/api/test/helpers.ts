@@ -20,6 +20,9 @@ function loadDevVars(): Record<string, string> {
 
 const devVars = loadDevVars();
 
+/** Clé Gemini réelle si elle est configurée localement (tests « live » opt-in). */
+export const geminiApiKey = process.env.GEMINI_API_KEY ?? devVars.GEMINI_API_KEY;
+
 /** Env de test : provider mock (pas de GEMINI_API_KEY), + Neon si dispo. */
 export const baseEnv: Record<string, string | undefined> = {
   APP_ENV: 'test',

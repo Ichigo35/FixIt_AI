@@ -1,4 +1,10 @@
-import { MAX_VIDEO_BYTES, type UploadKind, type UploadResult } from '@fixit/shared';
+import {
+  MAX_VIDEO_BYTES,
+  resolveImageContentType,
+  resolveVideoContentType,
+  type UploadKind,
+  type UploadResult,
+} from '@fixit/shared';
 import { ApiError } from './ApiError';
 import { config } from '@/config';
 import { apiPostBinary, authBridge } from './client';
@@ -28,18 +34,22 @@ export function videoSource(videoId: string) {
   };
 }
 
-function contentTypeFor(uri: string): string {
-  const lower = uri.toLowerCase();
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  return 'image/jpeg';
-}
-
-/** Lit un fichier local (file://) et l'envoie au Worker. Renvoie l'id de l'image stockée. */
-export async function uploadImage(uri: string, kind: UploadKind = 'problem'): Promise<UploadResult> {
+/**
+ * Lit un fichier local (file:// ou content://) et l'envoie au Worker.
+ * Le type est ramené à une valeur canonique : les appareils Android (MIUI…)
+ * renvoient souvent `image/jpg` pour `fetch(content://…).blob().type`, ce que le
+ * Worker refusait (415) sur une photo pourtant valide.
+ * `mimeHint` = `asset.mimeType` du sélecteur quand il est connu.
+ * Renvoie l'id de l'image stockée.
+ */
+export async function uploadImage(
+  uri: string,
+  kind: UploadKind = 'problem',
+  mimeHint?: string | null,
+): Promise<UploadResult> {
   const fileRes = await fetch(uri);
   const blob = await fileRes.blob();
-  const contentType = blob.type && blob.type.startsWith('image/') ? blob.type : contentTypeFor(uri);
+  const contentType = resolveImageContentType([mimeHint, blob.type, uri]);
   return apiPostBinary<UploadResult>(
     `/uploads?kind=${encodeURIComponent(kind)}`,
     blob,
@@ -47,20 +57,13 @@ export async function uploadImage(uri: string, kind: UploadKind = 'problem'): Pr
   );
 }
 
-function videoContentTypeFor(uri: string): 'video/mp4' | 'video/quicktime' {
-  return uri.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4';
-}
-
 /** Envoie une courte vidéo de diagnostic. Rejette tôt si le fichier dépasse la limite serveur. */
-export async function uploadVideo(uri: string): Promise<UploadResult> {
+export async function uploadVideo(uri: string, mimeHint?: string | null): Promise<UploadResult> {
   const fileRes = await fetch(uri);
   const blob = await fileRes.blob();
   if (blob.size > MAX_VIDEO_BYTES) {
     throw new ApiError(413, 'payload_too_large');
   }
-  const contentType =
-    blob.type === 'video/mp4' || blob.type === 'video/quicktime'
-      ? blob.type
-      : videoContentTypeFor(uri);
+  const contentType = resolveVideoContentType([mimeHint, blob.type, uri]);
   return apiPostBinary<UploadResult>('/uploads?kind=video', blob, contentType);
 }

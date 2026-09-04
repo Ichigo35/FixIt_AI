@@ -52,6 +52,21 @@ describe('POST /uploads', () => {
     expect(stored?.metadata.kind).toBe('video');
   });
 
+  it('accepte image/jpg (variante Android) et stocke image/jpeg canonique', async () => {
+    const e = env();
+    const app = createApp();
+    const res = await app.request(
+      '/uploads?kind=problem',
+      { method: 'POST', headers: { 'content-type': 'image/jpg', ...devAuth(uid) }, body: jpeg },
+      e,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; contentType: string };
+    expect(body.contentType).toBe('image/jpeg');
+    const stored = (e.STORAGE as ReturnType<typeof memoryStorage>)._store.get(`uploads/${body.id}`);
+    expect(stored?.contentType).toBe('image/jpeg');
+  });
+
   it('refuse un type non supporté (415)', async () => {
     const app = createApp();
     const res = await app.request(

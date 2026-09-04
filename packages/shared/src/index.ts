@@ -1,5 +1,6 @@
 export * from './constants';
 export * from './schemas';
+export * from './media';
 export * from './icons';
 export * from './scenes';
 export * from './safety/classifier';

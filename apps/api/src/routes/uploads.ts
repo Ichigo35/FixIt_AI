@@ -5,6 +5,7 @@ import {
   MEDIA_CONTENT_TYPES,
   UPLOAD_KINDS,
   VIDEO_CONTENT_TYPES,
+  normalizeMediaContentType,
   type MediaContentType,
   type UploadKind,
 } from '@fixit/shared';
@@ -13,7 +14,6 @@ import { rateLimit } from '../middleware/rateLimit';
 import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
 
-const CONTENT_TYPES = new Set<string>(MEDIA_CONTENT_TYPES);
 const VIDEO_TYPES = new Set<string>(VIDEO_CONTENT_TYPES);
 const KINDS = new Set<string>(UPLOAD_KINDS);
 
@@ -27,9 +27,9 @@ uploads.use('*', requireAuth);
 
 /** POST /uploads — corps = octets bruts, header Content-Type requis. Relais vers le stockage objet. */
 uploads.post('/', rateLimit('UPLOAD_RL'), async (c) => {
-  const contentType = (c.req.header('content-type') ?? '').split(';')[0]?.trim() ?? '';
-  if (!CONTENT_TYPES.has(contentType)) {
-    return c.json({ error: 'unsupported_media_type', allowed: [...CONTENT_TYPES] }, 415);
+  const contentType = normalizeMediaContentType(c.req.header('content-type'));
+  if (!contentType) {
+    return c.json({ error: 'unsupported_media_type', allowed: [...MEDIA_CONTENT_TYPES] }, 415);
   }
 
   const isVideo = VIDEO_TYPES.has(contentType);

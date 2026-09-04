@@ -10,7 +10,7 @@ export default function DescribeScreen() {
   const [text, setText] = useState('');
 
   return (
-    <Screen scroll>
+    <Screen scroll keyboardAware>
       <Text variant="title">What happened?</Text>
       <Text muted>
         Describe the problem in a sentence or two. Examples: “The washing machine makes a loud

@@ -138,6 +138,8 @@ export const fr: Dict = {
     view: { photo: 'Photo', scene: 'Schéma' },
     anchorA11y: 'Votre photo, avec « {label} » mis en évidence',
     anchorHint: 'Appuyez pour voir toute la photo',
+    photoUnavailable: 'Photo indisponible',
+    photoUnavailableHint: 'Appuyez pour réessayer',
     sceneA11y: 'Schéma — {scene}. {caption}',
     checkTitle: 'VÉRIFIER VOTRE TRAVAIL · FACULTATIF',
     checkBody: 'Prenez une photo de « {title} » et FixIt AI la vérifie.',

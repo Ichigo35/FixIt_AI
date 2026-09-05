@@ -380,6 +380,51 @@ natif Android/iOS, non simulable en Vitest/Node).
 mécanismes natifs non testables en Vitest) mais toutes vertes après les deux fixes. APK régénéré et testé sur
 device (OPPO CPH2799) via `adb install -r`.
 
+### Guide de réparation illustré — gel réseau, photo noire et schéma générique corrigés ✅ (2026-09-05, soir)
+
+Toujours en session device branché : l'utilisateur, dans le guide de réparation, signale que la photo repère
+s'affiche **entièrement noire** et que les schémas dessinés **« ne sont pas du tout parlants »**. Diagnostiqué en
+direct (`adb`/`uiautomator2`, `wrangler tail --format json`, requêtes Neon directes via MCP) — trois causes
+distinctes trouvées, dont une auto-infligée par les fixes du jour même.
+
+**1. Gel infini de l'écran « Repair guide ».** En re-testant, `GET /diagnoses/:id/repair-guide` (pourtant déjà en
+cache, donc censé être quasi instantané) est resté bloqué **plusieurs minutes**, sans qu'aucune requête n'atteigne
+le Worker (`wrangler tail` muet malgré le spinner toujours animé — donc le thread JS n'était pas figé, seule une
+promesse restait indéfiniment en attente). Cause : `fetch()` n'a **aucun délai par défaut** ; le rafraîchissement
+d'access token ajouté plus tôt dans la journée (voir section précédente sur les déconnexions Google) appelle
+`refreshAccessToken()` vers `api.stack-auth.com`, et si ce point réseau précis reste bloqué (jamais de réponse, ni
+succès ni erreur), l'attente est **infinie** — la requête originale au Worker ne repart jamais.
+**Fix** : nouveau `apps/mobile/src/lib/fetchTimeout.ts` (`fetchWithTimeout`, `AbortController`), appliqué aux
+appels Stack Auth (`stackClient.ts`, `oauth.ts` — 15 s, ces appels sont censés être quasi instantanés) **et** en
+filet de sécurité sur le client API principal (`client.ts` — 90 s, généreux exprès : un diagnostic IA peut
+légitimement prendre « jusqu'à une minute »). Un appel bloqué échoue désormais proprement (retryable) au lieu de
+geler l'écran pour toujours. Test pur : `apps/mobile/test/fetchTimeout.test.ts` (2 tests, fake timers).
+
+**2. Photo repère entièrement noire.** Une fois le point 1 corrigé, cause trouvée : `expo-image` ne réessaie
+**jamais** tout seul sur une image authentifiée — un jeton d'accès expiré au moment de l'ouverture de l'écran fait
+échouer le chargement une fois, silencieusement (contrairement aux appels API JSON, qui ont déjà un
+refresh-and-retry), et la photo reste vide **pour de bon**, cachée derrière l'effet « projecteur » qui assombrit
+tout sauf le repère (donc un écran uniformément noir avec juste le cadre flottant). **Fix** :
+`PhotoAnchorView.tsx` — `onError` déclenche un rafraîchissement de session (`authBridge.refresh()`) puis force un
+nouvel essai (`key={attempt}` sur l'`<Image>`) ; en cas d'échec persistant, un **vrai état d'erreur** visible
+(icône + « Photo indisponible » + « Appuyez pour réessayer », clés i18n FR/EN `repair.photoUnavailable*`) remplace
+le cadre noir muet — plus jamais d'échec silencieux. **Vérifié en direct** : rebranché sur le diagnostic exact
+signalé (piano, étape 2/5, repère « Rangée d'étouffoirs ») → la photo réelle s'affiche, boîte bien positionnée sur
+la rangée d'étouffoirs, assombrissement fonctionnel — capture d'écran à l'appui.
+
+**3. Schémas « pas du tout parlants ».** La silhouette générique `body: 'appliance'` (utilisée par la **majorité**
+des scènes : inspect, clean, replace, reassemble, lift-out, pry, cool-down, open-panel, photo, wait, generic…)
+dessinait un **lave-linge précis** (hublot rond + pieds + molette) — sur un piano, ça ne représente juste rien de
+réel, pire, ça a l'air **faux**. `SceneIllustration.tsx#Body` : silhouette rendue **neutre** (rectangle arrondi à
+deux zones, sans hublot ni pieds) — reste crédible pour n'importe quel objet réparé (meuble, instrument, vélo,
+carte électronique…), le geste et la cible (reticle/flèche/outil, déjà corrects) restent le vrai vecteur
+d'information. Purement visuel, aucun test cassé (`scenes.test.ts` ne couvre que `SCENE_SPECS`/`sceneForStep`, pas
+le rendu). **Vérifié en direct** : étape « Sécuriser le piano » → rectangle neutre + flèche, plus de forme
+d'électroménager incongrue.
+
+**Tests** : 157 verts (66 shared + 48 api + 43 mobile, +2 pour `fetchTimeout`). APK régénéré, réinstallé et
+revérifié en direct sur le device (OPPO CPH2799) pour les trois points.
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

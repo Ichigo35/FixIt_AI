@@ -220,14 +220,17 @@ function Body({ ctx, body }: { ctx: Ctx; body: SceneBody }) {
   const stroke = { borderWidth: 2, borderColor: ctx.line, backgroundColor: ctx.surface };
 
   if (body === 'appliance') {
+    // Silhouette **neutre** : un simple objet à deux zones (dessus/dessous),
+    // sans détail identifiable. Utilisée pour la majorité des scènes (inspect,
+    // clean, replace, reassemble…), elle doit rester crédible pour N'IMPORTE
+    // QUEL objet réparé — un piano, un meuble, un vélo, une carte électronique
+    // — pas seulement un électroménager. Avant : hublot rond + pieds = lisible
+    // comme un lave-linge précis, donc visiblement faux (et déroutant) dès que
+    // l'objet réel n'en est pas un — signalé par l'utilisateur sur un piano.
     return (
       <>
-        <View style={[at(ctx, 22, 8, 56, 46), stroke, { borderRadius: 5 * ctx.u }]} />
-        <View style={[at(ctx, 22, 18, 56, 0.9), { backgroundColor: ctx.line, opacity: 0.5 }]} />
-        <View style={[at(ctx, 68, 11.5, 5, 4), { borderWidth: 1.6, borderColor: ctx.line, borderRadius: 2 * ctx.u }]} />
-        <View style={[at(ctx, 39, 25, 22, 22), { borderWidth: 2, borderColor: ctx.line, borderRadius: 11 * ctx.u, opacity: 0.75 }]} />
-        <View style={[at(ctx, 27, 54, 6, 2.5), { backgroundColor: ctx.line, opacity: 0.55, borderRadius: ctx.u }]} />
-        <View style={[at(ctx, 67, 54, 6, 2.5), { backgroundColor: ctx.line, opacity: 0.55, borderRadius: ctx.u }]} />
+        <View style={[at(ctx, 14, 8, 72, 46), stroke, { borderRadius: 4 * ctx.u }]} />
+        <View style={[at(ctx, 14, 20, 72, 0.9), { backgroundColor: ctx.line, opacity: 0.35 }]} />
       </>
     );
   }
@@ -337,8 +340,8 @@ function Focus({ ctx, focus, point, body }: { ctx: Ctx; focus: SceneFocus; point
   }
 
   if (focus === 'seam') {
-    const width = body === 'appliance' ? 56 : 68;
-    const left = body === 'appliance' ? 22 : 16;
+    const width = body === 'appliance' ? 72 : 68;
+    const left = body === 'appliance' ? 14 : 16;
     return <DashedLine ctx={ctx} x={left} y={body === 'appliance' ? 20 : 12} width={width} color={ctx.accent} />;
   }
 

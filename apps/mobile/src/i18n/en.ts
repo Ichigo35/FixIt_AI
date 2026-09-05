@@ -136,6 +136,8 @@ export const en: Dict = {
     view: { photo: 'Photo', scene: 'Diagram' },
     anchorA11y: 'Your photo, with “{label}” highlighted',
     anchorHint: 'Tap to see the whole photo',
+    photoUnavailable: 'Photo unavailable',
+    photoUnavailableHint: 'Tap to retry',
     sceneA11y: 'Diagram — {scene}. {caption}',
     checkTitle: 'CHECK YOUR WORK · OPTIONAL',
     checkBody: 'Take a photo of “{title}” and FixIt AI will check it.',

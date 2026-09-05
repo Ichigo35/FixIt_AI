@@ -1,5 +1,15 @@
 import { config } from '@/config';
+import { fetchWithTimeout } from '@/lib/fetchTimeout';
 import { ApiError } from './ApiError';
+
+/**
+ * Filet de sécurité : sans délai, un `fetch` qui reste ouvert sans jamais
+ * répondre bloque l'écran **pour toujours** (reproduit en direct : un appel
+ * bloqué à mi-chemin d'un rafraîchissement de session a gelé l'écran du
+ * guide plusieurs minutes). Généreux exprès : un diagnostic IA peut
+ * légitimement prendre « jusqu'à une minute » (Gemini + bascule de modèle).
+ */
+const API_TIMEOUT_MS = 90_000;
 
 export { ApiError };
 
@@ -22,14 +32,18 @@ type Body = string | ArrayBuffer | Blob | undefined;
 async function request(path: string, method: string, contentType: string, body: Body): Promise<Response> {
   const url = `${config.apiBaseUrl}${path}`;
   const send = (token: string | null) =>
-    fetch(url, {
-      method,
-      headers: {
-        ...(contentType ? { 'content-type': contentType } : {}),
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
+    fetchWithTimeout(
+      url,
+      {
+        method,
+        headers: {
+          ...(contentType ? { 'content-type': contentType } : {}),
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body,
       },
-      body,
-    });
+      API_TIMEOUT_MS,
+    );
 
   let res: Response;
   try {

@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { config } from '@/config';
+import { fetchWithTimeout } from '@/lib/fetchTimeout';
 import { jwtSubject } from './jwt';
 import { StackAuthError, type StackSession } from './stackClient';
 
@@ -105,18 +106,22 @@ export function isOAuthPending(): boolean {
 }
 
 async function requestToken(code: string, verifier: string): Promise<StackSession> {
-  const res = await fetch(`${STACK_BASE}/auth/oauth/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: config.stackProjectId,
-      client_secret: config.stackPublishableKey,
-      code,
-      code_verifier: verifier,
-      redirect_uri: REDIRECT_URI,
-    }).toString(),
-  });
+  const res = await fetchWithTimeout(
+    `${STACK_BASE}/auth/oauth/token`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: config.stackProjectId,
+        client_secret: config.stackPublishableKey,
+        code,
+        code_verifier: verifier,
+        redirect_uri: REDIRECT_URI,
+      }).toString(),
+    },
+    15_000,
+  );
 
   if (!res.ok) {
     let message = `Google sign-in failed (${res.status})`;

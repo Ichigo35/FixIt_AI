@@ -313,7 +313,7 @@ OAuth GitHub/Apple = plus tard.
 
 **Problème 2 — clavier qui cachait le champ de saisie** (description du problème, « More info », etc.) : `Screen` gagne une prop `keyboardAware` (`KeyboardAvoidingView behavior="padding"` sur iOS ; `windowSoftInputMode="adjustResize"` suffit sur Android, déjà dans `AndroidManifest.xml`) + `scrollRef` pour `scrollToEnd` au focus du champ (Android ne défile pas seul). Appliqué à `describe.tsx` et à l'étape preview+description de `CaptureFlow`.
 
-**Vérifié le 2026-09-05** : code relu, cohérent avec la doc, testé (155 tests verts : 66 shared + 48 api + 41 mobile), APK régénéré avec ces fixes.
+**⚠️ Vérification du 2026-09-05 (matin) invalidée** : une relecture de code + suite de tests verte avait conclu que ces deux fixes tenaient. **Faux** — l'utilisateur a branché son téléphone (OPPO CPH2799, Android 16/ColorOS) en USB et signalé que les deux bugs étaient toujours là avec le nouvel APK. Reproduits en direct via `adb`/`uiautomator`/`wrangler tail` : **relire du code ne suffit pas, il faut tester sur le device réel** avant d'annoncer un fix résolu — voir la section suivante pour les vraies causes et le vrai correctif (2026-09-05, après-midi).
 
 ### Déconnexion Google intermittente ✅ (2026-09-05)
 
@@ -327,6 +327,58 @@ OAuth GitHub/Apple = plus tard.
 - `client.ts` ne force plus `onSignedOut()` quand `refresh()` renvoie `null` — la décision de déconnecter appartient désormais uniquement à `AuthProvider`.
 
 **Tests** : `apps/mobile/test/authError.test.ts` (5 tests, purs). Suite complète relancée : 155 tests verts.
+
+### Clavier + upload photo — vrais correctifs après test sur device ✅ (2026-09-05, après-midi)
+
+L'utilisateur a branché son téléphone (**OPPO CPH2799, Android 16, ColorOS**) en USB et démontré que les deux
+bugs du 2026-09-04 étaient toujours présents avec le nouvel APK. Diagnostiqué **en direct sur le device** avec
+`adb`/`uiautomator2` (tap, screenshot, dump de la hiérarchie de vues) et `wrangler tail --format json` (requêtes
+réelles reçues par le Worker prod) — la relecture de code de la veille avait conclu à tort que c'était corrigé.
+
+**1. Clavier qui cache la saisie — cause réelle.** Le fix du 2026-09-04 (`Screen.keyboardAware` avec
+`KeyboardAvoidingView behavior="height"` sur Android) ne faisait **rien** : `dumpsys window` a montré l'`EditText`
+positionné à `[99,1493]-[981,1763]` alors que le clavier (`InsetsSource type=ime`) commençait à `y=1475` — champ
+entièrement sous le clavier, comme avant. Cause : le calcul interne de `KeyboardAvoidingView` (`frame.y + frame.height
+- keyboardY`, dans `KeyboardAvoidingView.js`) suppose que `frame.y` (mesuré par `onLayout`, **relatif au parent**)
+correspond à une position absolue à l'écran — hypothèse fausse dès que la vue est nichée dans un `SafeAreaView`
+(barre de statut). Sous edge-to-edge (Android 15+, `edgeToEdgeEnabled=true`), le résultat est une hauteur quasi
+nulle : `KeyboardAvoidingView` ne sert à rien ici, quel que soit le `behavior` choisi.
+**Fix fiable** : abandon de `KeyboardAvoidingView`. `Screen.tsx` écoute directement `Keyboard.addListener('keyboardDidShow'/'keyboardDidHide', …)`
+(mécanisme natif RN moderne basé sur `WindowInsetsCompat.Type.ime()` — `ReactRootView.java#checkForKeyboardEvents`,
+fonctionne bien indépendamment d'edge-to-edge) pour récupérer uniquement la **hauteur** du clavier (valeur absolue,
+aucune ambiguïté de repère), l'ajoute en `paddingBottom` du contenu du `ScrollView`, et appelle `scrollToEnd()`
+automatiquement à l'apparition du clavier. Centralisé dans `Screen` : `describe.tsx` et `CaptureFlow` en profitent
+sans code par écran (le hack `onFocus` + `setTimeout(scrollToEnd)` de `CaptureFlow` est supprimé, devenu inutile).
+**Vérifié en direct** : `EditText` désormais à `[99,734]-[981,1094]`, entièrement au-dessus du clavier (`y=1475`) —
+champ, placeholder et bouton "Analyze" tous visibles, capture d'écran à l'appui.
+
+**2. Photo refusée (415) — cause réelle.** Le fix du 2026-09-04 (normalisation du `Content-Type` en JS +
+header explicite) ne suffisait pas : `wrangler tail --format json` a montré la requête `POST /uploads` réelle
+envoyée par le téléphone **sans aucun header `content-type`** (confirmé aussi en la provoquant nous-mêmes via
+`curl` pour valider la lecture de `wrangler tail`, dont le texte `- Ok @ …` en mode `pretty` est trompeur : il
+indique juste l'absence d'exception dans le Worker, **pas** le code HTTP réel — piège découvert en cours de route).
+Cause profonde : sur Android **et** iOS, le pont natif RN ignore le header HTTP JS pour un body `Blob` — Android
+`BlobModule.kt#toRequestBody` (`var type = contentType; if (map["type"] non vide) type = map["type"]`) et iOS
+`RCTBlobManager.mm#resolveMultipartBlock` lisent tous les deux en priorité le **type interne du Blob**
+(`blob.data.type`, dérivé par l'OS — `ContentResolver.getType()` sur Android, UTI sur iOS), écrasant silencieusement
+notre valeur normalisée dès qu'il est non vide. Sur ce device, ce type OS est soit non canonique, soit invalide pour
+`MediaType.parse` d'OkHttp → **aucun** Content-Type n'est envoyé du tout → 415 même avec un header JS correct. Le
+correctif de la veille ne touchait que le header JS, jamais consulté dans ce cas.
+**Fix fiable** : `apps/mobile/src/api/uploads.ts` — nouvelle fonction `retag()` qui appelle `blob.slice(0, blob.size,
+contentType)` (API standard `Blob.prototype.slice`, RN core) : crée une nouvelle vue sur les mêmes octets (pas de
+copie) mais avec le type qu'on lui donne, qui devient alors ce que lit `map["type"]` côté natif — sur les deux
+plateformes. `uploadImage`/`uploadVideo` envoient ce Blob retaggé au lieu du Blob brut.
+**Vérifié en direct** : requête réelle observée par `wrangler tail` → `content-type: image/jpeg`, `201 Created` ;
+diagnostic produit avec la miniature de la photo affichée dans "Ce que vous avez envoyé".
+
+**Leçon retenue** : pour un bug rapporté « toujours là » après un fix, tester sur le device réel de l'utilisateur
+(`adb`/`uiautomator2` + `wrangler tail` pour voir la requête HTTP réelle) plutôt que de se fier à une relecture de
+code ou aux tests unitaires — ni l'un ni l'autre n'auraient attrapé ces deux causes (comportement spécifique du pont
+natif Android/iOS, non simulable en Vitest/Node).
+
+**Tests** : suite complète inchangée en nombre (155 : 66 shared + 48 api + 41 mobile — ces deux bugs sont dans des
+mécanismes natifs non testables en Vitest) mais toutes vertes après les deux fixes. APK régénéré et testé sur
+device (OPPO CPH2799) via `adb install -r`.
 
 ## Déploiement Cloudflare ✅ (2026-09-01)
 

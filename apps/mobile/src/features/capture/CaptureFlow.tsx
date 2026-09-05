@@ -160,11 +160,6 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
             <TextInput
               value={description}
               onChangeText={setDescription}
-              onFocus={() => {
-                // Android : le clavier réduit la fenêtre (adjustResize) mais ne
-                // fait pas défiler tout seul jusqu'au champ. On l'y amène.
-                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
-              }}
               multiline
               placeholder={
                 isVideo

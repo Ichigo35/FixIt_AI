@@ -14,6 +14,7 @@ import {
   resolveGoogleRedirect,
   signInWithGoogle as oauthSignInWithGoogle,
 } from './oauth';
+import { isDefinitiveAuthFailure } from './authError';
 import {
   refreshAccessToken,
   signIn as stackSignIn,
@@ -80,8 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const next = { ...current, accessToken };
         await persist(next);
         return accessToken;
-      } catch {
-        await persist(null);
+      } catch (err) {
+        // Ne déconnecter que si le refresh token est réellement invalide/expiré.
+        // Une panne réseau ou serveur passagère ne doit pas effacer la session
+        // locale : c'était la cause des déconnexions intermittentes.
+        if (isDefinitiveAuthFailure(err)) await persist(null);
         return null;
       }
     };

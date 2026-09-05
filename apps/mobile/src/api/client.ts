@@ -44,9 +44,12 @@ async function request(path: string, method: string, contentType: string, body: 
     if (fresh) {
       res = await send(fresh);
       if (res.status === 401) authBridge.onSignedOut();
-    } else {
-      authBridge.onSignedOut();
     }
+    // `fresh` null : le refresh a échoué. `AuthProvider` a déjà décidé s'il
+    // fallait déconnecter (refresh token réellement invalide) ou non (panne
+    // réseau/serveur passagère) — pas de déconnexion forcée ici, elle
+    // court-circuiterait cette décision et provoquerait des déconnexions
+    // intermittentes non désirées.
   }
   return res;
 }

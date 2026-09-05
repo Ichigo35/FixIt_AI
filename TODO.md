@@ -307,6 +307,27 @@ OAuth GitHub/Apple = plus tard.
 
 **Vérification visuelle** : les 23 scènes ont été rendues hors app (transcription HTML de la même géométrie + capture headless) avant le build, pour valider les compositions.
 
+### Upload MIME (JPEG MIUI) + clavier qui masquait la saisie ✅ (2026-09-04)
+
+**Problème 1 — photos refusées (415)** : certains téléphones Android (MIUI/Xiaomi notamment) renvoient `image/jpg` (non canonique) au lieu de `image/jpeg` pour `fetch(content://…).blob().type` → le Worker rejetait avec un `Set` strict. **Fix** : `packages/shared/src/media.ts` (`normalizeMediaContentType`/`mediaContentTypeFromName`/`resolveImageContentType`/`resolveVideoContentType`), partagé Worker + mobile. Le Worker normalise le header reçu au lieu de le comparer strictement ; le mobile résout le type dans l'ordre `asset.mimeType` (sélecteur) → `blob.type` → extension → repli `image/jpeg`, et l'envoie en header explicite. Testé (6 tests shared).
+
+**Problème 2 — clavier qui cachait le champ de saisie** (description du problème, « More info », etc.) : `Screen` gagne une prop `keyboardAware` (`KeyboardAvoidingView behavior="padding"` sur iOS ; `windowSoftInputMode="adjustResize"` suffit sur Android, déjà dans `AndroidManifest.xml`) + `scrollRef` pour `scrollToEnd` au focus du champ (Android ne défile pas seul). Appliqué à `describe.tsx` et à l'étape preview+description de `CaptureFlow`.
+
+**Vérifié le 2026-09-05** : code relu, cohérent avec la doc, testé (155 tests verts : 66 shared + 48 api + 41 mobile), APK régénéré avec ces fixes.
+
+### Déconnexion Google intermittente ✅ (2026-09-05)
+
+**Symptôme rapporté** : la session Google se déconnectait de temps en temps, de façon non permanente (pas une vraie expiration du compte).
+
+**Cause** : dans `AuthProvider`, `authBridge.refresh()` effaçait **systématiquement** la session locale (`persist(null)`) dès que `refreshAccessToken` levait une erreur — y compris pour une panne réseau passagère (coupure Wi-Fi/DNS — cf. note DNS intermittente de la machine dans ce fichier) ou une panne serveur transitoire (5xx/429) côté Stack Auth, qui n'ont rien à voir avec un refresh token réellement invalide. En plus, `apps/mobile/src/api/client.ts` forçait un second `onSignedOut()` dans tous les cas où `refresh()` renvoyait `null`, court-circuitant toute tentative de préserver la session.
+
+**Fix** :
+- `StackAuthError` porte désormais le **statut HTTP** d'origine ; nouvelle fonction pure `isDefinitiveAuthFailure(err)` (`apps/mobile/src/auth/authError.ts`, extrait de `stackClient.ts` pour rester testable en Node — comme `jwt.ts`) : `true` seulement pour un 4xx autre que 429 (refresh token réellement rejeté), `false` pour une erreur réseau, un 5xx ou un 429 (transitoire).
+- `AuthProvider.authBridge.refresh` n'appelle `persist(null)` que si `isDefinitiveAuthFailure` est vrai ; sinon la session locale est conservée et le prochain appel retentera le refresh.
+- `client.ts` ne force plus `onSignedOut()` quand `refresh()` renvoie `null` — la décision de déconnecter appartient désormais uniquement à `AuthProvider`.
+
+**Tests** : `apps/mobile/test/authError.test.ts` (5 tests, purs). Suite complète relancée : 155 tests verts.
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

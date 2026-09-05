@@ -17,15 +17,8 @@ export interface StackSession {
   userId: string;
 }
 
-export class StackAuthError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'StackAuthError';
-  }
-}
+export { StackAuthError, isDefinitiveAuthFailure } from './authError';
+import { StackAuthError } from './authError';
 
 async function readError(res: Response): Promise<never> {
   let code = `http_${res.status}`;
@@ -37,7 +30,7 @@ async function readError(res: Response): Promise<never> {
   } catch {
     /* noop */
   }
-  throw new StackAuthError(code, message);
+  throw new StackAuthError(code, message, res.status);
 }
 
 export async function signUp(email: string, password: string): Promise<StackSession> {

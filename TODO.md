@@ -455,9 +455,22 @@ revérifié en direct sur le device (OPPO CPH2799) pour les trois points.
 
 **Tests** : 163 verts (66 shared + 54 api + 43 mobile). `pnpm -r typecheck` + `pnpm lint` OK.
 **Worker déployé** ✅ version `431bc954` (2026-09-06) — leviers 2/3/4 actifs en prod, `/health` OK.
-**APK release** ✅ 2026-09-06 (~52 Mo arm64) — leviers 1/5, buildé sans `expo prebuild` (autolinking Expo).
-**Reste à faire** : brancher le device (OPPO CPH2799) → `adb install -r` l'APK → vérifier le redimensionnement
-(taille d'upload via `wrangler tail --format json`) + la dédup (2× le même diagnostic → 2ᵉ instantané).
+**APK release** ✅ 2026-09-06 (2 builds ; le 2ᵉ inclut le fix session/MAJ, ~54 Mo arm64).
+**Vérifié en direct sur device (OPPO CPH2799)** :
+- levier 1 (redim. photo) : photo de piano stockée **112 Ko vs 845 Ko** avant (−87 %).
+- levier 4 (dédup) : 2ᵉ diagnostic identique → **HTTP 200 / ~1 s vs 28 s**, 0 ligne créée, 0 appel Gemini.
+- fix session : 2× `adb install -r` d'affilée → l'app **reste connectée** (avant : login à chaque MAJ).
+
+## Session perdue à chaque mise à jour de l'app — corrigée ✅ (2026-09-06)
+
+`expo-secure-store` (session + outbox) chiffre avec une clé AndroidKeyStore jamais sauvegardée. Le
+manifeste avait `allowBackup=true` et **pas** de `android:dataExtractionRules` (Android 12+ ; device
+en Android 16). Les SharedPreferences `SecureStore` étaient donc restaurables → clé ≠ chiffré →
+`BadPaddingException` → `getItemAsync` renvoie `null` → écran de login à chaque MAJ (mais pas à un
+simple redémarrage). Fix : `app.config.ts` → `android.allowBackup = false` + re-`expo prebuild`
+(pose `dataExtractionRules` excluant `SecureStore` de cloud-backup + device-transfer) ;
+`AuthProvider` : `getItemAsync().catch(() => null)` au démarrage. Commit `0e39696`. ⚠️ Un vrai
+uninstall/réinstall demandera toujours une reconnexion (normal).
 
 ## Déploiement Cloudflare ✅ (2026-09-01)
 

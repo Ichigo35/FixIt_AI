@@ -54,7 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Restauration au démarrage.
   useEffect(() => {
     (async () => {
-      const raw = await SecureStore.getItemAsync(KEY);
+      // `getItemAsync` peut lever (déchiffrement impossible après une MAJ / un
+      // changement de verrou d'écran) : on ne doit jamais rester bloqué sur
+      // 'loading', sinon l'app affiche un spinner infini au lieu de l'écran de login.
+      const raw = await SecureStore.getItemAsync(KEY).catch(() => null);
       if (raw) {
         try {
           const parsed = JSON.parse(raw) as StackSession;

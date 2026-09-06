@@ -22,6 +22,14 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'ai.fixit.app',
+    // La session (Stack Auth) et l'outbox vivent dans expo-secure-store. Avec
+    // `allowBackup` (défaut Expo = true), une mise à jour de l'app — `adb install -r`
+    // comme une MAJ Play Store — peut déclencher une restauration Auto Backup qui
+    // réécrit les SharedPreferences de SecureStore par-dessus l'install fraîche,
+    // alors que la clé AES reste dans l'AndroidKeyStore (jamais sauvegardée) : le
+    // chiffré n'est plus déchiffrable → `getItemAsync` renvoie null → écran de login.
+    // C'était la cause de « la connexion Google ne se maintient pas après update ».
+    allowBackup: false,
     adaptiveIcon: {
       backgroundColor: '#0B1120',
       foregroundImage: './assets/android-icon-foreground.png',

@@ -55,6 +55,21 @@ function mockFetch(byModel: Record<string, () => Response>) {
 
 const input = { description: 'fridge is warm', images: [] };
 
+/** `CooldownStore` factice (comme un KV) pour tester le partage entre isolates. */
+function fakeStore() {
+  const map = new Map<string, string>();
+  return {
+    map,
+    get: vi.fn(async (key: string) => {
+      const v = map.get(key);
+      return v ? (JSON.parse(v) as Record<string, number>) : null;
+    }),
+    put: vi.fn(async (key: string, value: string) => {
+      map.set(key, value);
+    }),
+  };
+}
+
 describe('FailoverGeminiProvider', () => {
   beforeEach(() => {
     _resetGeminiCooldowns();
@@ -185,4 +200,32 @@ describe('FailoverGeminiProvider', () => {
     const provider = new FailoverGeminiProvider('key', [PRIMARY]);
     await expect(provider.diagnose(input)).rejects.toBeInstanceOf(AIProviderError);
   });
+
+  it('partage le repos entre isolates via le CooldownStore (KV)', async () => {
+    const store = fakeStore();
+    const fetchMock = mockFetch({
+      [PRIMARY]: () => rateLimitedResponse('300s'),
+      [FALLBACK]: () => okResponse(),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Isolate A : le préféré 429 -> repos écrit dans le KV.
+    const isolateA = new FailoverGeminiProvider('key', [PRIMARY, FALLBACK], store);
+    await isolateA.diagnose(input);
+    expect(store.put).toHaveBeenCalled();
+    const primaryHitsAfterA = fetchMock.mock.calls.filter((c) => String(c[0]).includes(PRIMARY)).length;
+    expect(primaryHitsAfterA).toBe(1);
+
+    // Nouvel isolate : cache module remis à zéro, mais le KV garde le repos.
+    _resetGeminiCooldowns();
+    const isolateB = new FailoverGeminiProvider('key', [PRIMARY, FALLBACK], store);
+    const result = await isolateB.diagnose(input);
+
+    expect(result.problem).toContain('door seal');
+    expect(isolateB.model).toBe(FALLBACK);
+    // Le préféré n'a PAS été retenté par l'isolate B (économie d'une requête 429).
+    const primaryHitsAfterB = fetchMock.mock.calls.filter((c) => String(c[0]).includes(PRIMARY)).length;
+    expect(primaryHitsAfterB).toBe(1);
+  });
+
 });

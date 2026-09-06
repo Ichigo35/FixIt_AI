@@ -43,6 +43,26 @@ function parseRetryAfterMs(body: string): number | undefined {
   return Number.isFinite(seconds) ? Math.round(seconds * 1000) : undefined;
 }
 
+/**
+ * Récupère un objet JSON d'une réponse Gemini légèrement mal formée **sans
+ * dépenser de requête** : retire un éventuel bloc ```` ```json ```` et tronque à
+ * la première `{` … dernière `}`. `responseSchema` rend la sortie propre la
+ * plupart du temps ; ceci rattrape juste le cas où le modèle l'a enrobée.
+ */
+function salvageJson(raw: string): string {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = (fenced ? fenced[1]! : raw).trim();
+  const start = body.indexOf('{');
+  const end = body.lastIndexOf('}');
+  if (start >= 0 && end > start) return body.slice(start, end + 1);
+  return body;
+}
+
+/** Ne garde que les parts texte (pour le retry « réparation JSON » : inutile de renvoyer les images). */
+function textOnlyParts(parts: GeminiPart[]): GeminiPart[] {
+  return parts.filter((p) => p.text !== undefined && !p.inline_data && !p.file_data);
+}
+
 function toBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let binary = '';
@@ -225,23 +245,34 @@ export class GeminiProvider implements AIProvider {
     coerce: (raw: unknown) => T,
   ): Promise<T> {
     const first = await this.call(systemPrompt, schema, parts);
+    let firstErr: Error;
     try {
       return coerce(JSON.parse(first));
     } catch (err) {
-      const repaired = await this.call(systemPrompt, schema, [
-        ...parts,
-        {
-          text: `Your previous JSON was invalid (${(err as Error).message}). Return a corrected JSON object matching the schema exactly. Previous output:\n${first}`,
-        },
-      ]);
-      try {
-        return coerce(JSON.parse(repaired));
-      } catch (err2) {
-        throw new AIProviderError(
-          'ai_bad_output',
-          `Gemini returned invalid JSON twice: ${(err2 as Error).message}`,
-        );
-      }
+      firstErr = err as Error;
+    }
+    // 1) Récupération locale (0 requête) : le modèle a peut-être enrobé le JSON.
+    try {
+      return coerce(JSON.parse(salvageJson(first)));
+    } catch {
+      /* on tente une vraie réparation */
+    }
+    // 2) Réparation : requête **texte seul** — le modèle corrige sa propre
+    //    syntaxe, il n'a pas besoin qu'on lui renvoie les images (économie de
+    //    tokens d'entrée, donc de quota).
+    const repaired = await this.call(systemPrompt, schema, [
+      ...textOnlyParts(parts),
+      {
+        text: `Your previous JSON was invalid (${firstErr.message}). Return a corrected JSON object matching the schema exactly. Previous output:\n${first}`,
+      },
+    ]);
+    try {
+      return coerce(JSON.parse(salvageJson(repaired)));
+    } catch (err2) {
+      throw new AIProviderError(
+        'ai_bad_output',
+        `Gemini returned invalid JSON twice: ${(err2 as Error).message}`,
+      );
     }
   }
 

@@ -425,6 +425,38 @@ d'électroménager incongrue.
 **Tests** : 157 verts (66 shared + 48 api + 43 mobile, +2 pour `fetchTimeout`). APK régénéré, réinstallé et
 revérifié en direct sur le device (OPPO CPH2799) pour les trois points.
 
+## Réduction de la consommation des quotas Gemini ✅ (2026-09-06)
+
+5 leviers, tous implémentés. Objectif : moins de **requêtes** (mur RPD/RPM du palier gratuit) et moins de
+**tokens d'entrée** (photos).
+
+1. **Photos redimensionnées avant l'upload** (`apps/mobile/src/api/uploads.ts`). `downscaleImage()` :
+   `Image.getSize` → si le côté long > `MAX_IMAGE_EDGE` (1280 px), `expo-image-manipulator` (`manipulate().resize().renderAsync().saveAsync` JPEG q0.72). Best-effort : toute erreur ⇒ URI d'origine, un upload
+   n'échoue jamais à cause du redimensionnement. Un capteur 4000 px (~1600 tokens image) tombe à ~1000 px
+   (~400 tokens) ⇒ ~4× moins de tokens Gemini + upload plus léger. **Nouvelle dép native `expo-image-manipulator@~57.0.16`** ⇒ `expo prebuild` + rebuild APK nécessaires (pas de plugin config).
+2. **Retry JSON économe** (`apps/api/src/providers/gemini.ts` `structured()`). a) `salvageJson()` : retire un bloc
+   ` ```json ` / tronque à `{`…`}` et re-parse **localement** (0 requête) — rattrape le cas « modèle qui enrobe ».
+   b) Si une vraie 2ᵉ requête est nécessaire, elle part en **texte seul** (`textOnlyParts()` filtre les
+   `inline_data`/`file_data`) : le modèle corrige sa syntaxe, inutile de lui renvoyer les images. Tests :
+   `apps/api/test/gemini.test.ts` (4).
+3. **Repos de bascule partagé entre isolates** (`geminiFailover.ts` + KV `AI_STATE`). Sans ça, chaque isolate
+   Worker neuf recrame une requête 429 sur le modèle préféré avant de basculer. `CooldownStore` optionnel
+   (interface = sous-ensemble de `KVNamespace`) : `loadSharedCooldowns()` au début de `run()`, `persistCooldown()`
+   quand l'état change. Absent en local/tests ⇒ comportement inchangé (cache module seul). `wrangler.toml` :
+   `[[kv_namespaces]] binding = "AI_STATE"` (namespace `3b69ae05…` créé). Test : `geminiFailover.test.ts` (+1).
+4. **Déduplication des diagnostics identiques** (`routes/diagnoses.ts` + `repos.recentDiagnoses()`). Empreinte
+   `{description, category, imageIds triés, videoIds triés}` ; si un diagnostic identique existe depuis
+   < `DEDUP_WINDOW_MS` (10 min) ⇒ renvoyé (HTTP 200, `deduplicated: true`), **sans** appel Gemini ni
+   consommation de quota. Couvre le « Réessayer » client après un timeout réseau alors que le serveur avait
+   déjà répondu, et le retour arrière + re-soumission. `RefineDiagnosis` concatène les précisions ⇒ empreinte
+   différente, non impacté. Test : `diagnoses.test.ts` (+1).
+5. **Gardes anti double-tap** : `StepCheck.tsx` (verrou `busy` couvrant la phase `capturePhoto()` asynchrone,
+   sinon 2ᵉ tap = 2ᵉ appel `verify` vision) ; `RefineDiagnosis.tsx` (`submitted` ref avant `router.push`).
+
+**Tests** : 163 verts (66 shared + 54 api + 43 mobile). `pnpm -r typecheck` + `pnpm lint` OK.
+**Reste à faire** : déployer le Worker (`pnpm --filter @fixit/api run deploy` — leviers 2/3/4) · `expo prebuild`
++ rebuild APK (levier 1) · vérifier le redimensionnement + la dédup sur device réel.
+
 ## Déploiement Cloudflare ✅ (2026-09-01)
 
 - **Worker prod : `https://fixit-ai-api.ichigo35.workers.dev`** — `wrangler deploy` (compte `tcha.jimmy@gmail.com`).

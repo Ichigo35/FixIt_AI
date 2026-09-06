@@ -20,11 +20,13 @@ import {
   ensureRepairSession,
   ensureUser,
   getDiagnosis,
+  getQuota,
   getRepairGuide,
   getRepairSession,
   insertDiagnosis,
   listDiagnoses,
   listHistory,
+  recentDiagnoses,
   recordRepairCheck,
   saveRepairGuide,
   type ImageMeta,
@@ -39,6 +41,29 @@ import type { AppEnv } from '../types';
  * et poser des repères, sans faire exploser les tokens d'entrée (donc le quota).
  */
 const GUIDE_PHOTO_LIMIT = 3;
+
+/**
+ * Fenêtre pendant laquelle une requête de diagnostic **identique** (même
+ * description, catégorie, photos, vidéos) est renvoyée depuis la base au lieu de
+ * relancer Gemini : couvre le retour arrière et le « Réessayer » client alors que
+ * le serveur avait déjà répondu (timeout réseau à 90 s). Quota non consommé.
+ */
+const DEDUP_WINDOW_MS = 10 * 60_000;
+
+/** Empreinte d'une requête de diagnostic : deux requêtes égales ⇒ même empreinte. */
+function diagnosisFingerprint(input: {
+  description: string;
+  category: string | null;
+  imageIds: string[];
+  videoIds: string[];
+}): string {
+  return JSON.stringify({
+    d: input.description.trim(),
+    c: input.category ?? null,
+    i: [...input.imageIds].sort(),
+    v: [...input.videoIds].sort(),
+  });
+}
 
 /** Statut HTTP d'une panne du fournisseur IA (même règle sur toutes les routes). */
 function aiStatus(code: AIProviderError['code']): 429 | 502 | 503 | 422 {
@@ -71,6 +96,30 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
   const userId = c.get('userId');
   const email = c.get('userEmail');
   await ensureUser(db, userId, email, email ? isAdminEmail(c.env, email) : undefined);
+
+  // Déduplication : requête identique déjà traitée récemment ⇒ on renvoie le
+  // diagnostic existant sans rappeler Gemini ni consommer de quota.
+  const fingerprint = diagnosisFingerprint({
+    description: req.description,
+    category: req.category ?? null,
+    imageIds: req.imageIds,
+    videoIds: req.videoIds,
+  });
+  for (const prev of await recentDiagnoses(db, userId, DEDUP_WINDOW_MS)) {
+    const prevFp = diagnosisFingerprint({
+      description: prev.input.description,
+      category: prev.category,
+      imageIds: prev.input.imageIds,
+      videoIds: prev.input.videoIds ?? [],
+    });
+    if (prevFp === fingerprint) {
+      const quota = await getQuota(db, userId);
+      return c.json(
+        { ...prev, aiProvider: prev.aiProvider, aiModel: prev.aiModel, quota, deduplicated: true },
+        200,
+      );
+    }
+  }
 
   const quota = await consumeQuota(db, userId);
   if (!quota.allowed) {

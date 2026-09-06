@@ -27,6 +27,12 @@ S3_ENDPOINT = "https://br-rough-feather-a5r1cdyr.storage.c-1.us-east-2.aws.neon.
 S3_REGION = "us-east-2"
 S3_BUCKET = "fixit-ai-images"
 
+# État partagé entre isolates : repos de bascule des modèles Gemini (429/503).
+# Sans ce KV, chaque isolate neuf recrame une requête 429 sur le modèle préféré.
+[[kv_namespaces]]
+binding = "AI_STATE"
+id = "3b69ae056dd34f588b19addd739afd85"
+
 # Rate limiting (primitive native Cloudflare, aucun provisionnement).
 [[ratelimits]]
 name = "DIAGNOSE_RL"

@@ -50,6 +50,30 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(listed.items.length).toBe(1);
   });
 
+  it('déduplication : requête identique sous 10 min -> même diagnostic, quota inchangé', async () => {
+    const uid = freshUser();
+    const app = createApp();
+    const body = { description: 'the cupboard door hinge is loose and rattles' };
+
+    const r1 = await post(app, body, env(), uid);
+    expect(r1.status).toBe(201);
+    const b1 = (await r1.json()) as Record<string, any>;
+    expect(b1.quota.used).toBe(1);
+
+    const r2 = await post(app, body, env(), uid);
+    expect(r2.status).toBe(200);
+    const b2 = (await r2.json()) as Record<string, any>;
+    expect(b2.deduplicated).toBe(true);
+    expect(b2.id).toBe(b1.id);
+    expect(b2.quota.used).toBe(1); // pas de 2e consommation
+
+    // Une requête différente relance bien un vrai diagnostic (et consomme).
+    const r3 = await post(app, { description: 'the bathroom sink drains very slowly' }, env(), uid);
+    const b3 = (await r3.json()) as Record<string, any>;
+    expect(b3.id).not.toBe(b1.id);
+    expect(b3.quota.used).toBe(2);
+  });
+
   it('câble secteur -> forcedStop + guide 409', async () => {
     const uid = freshUser();
     const app = createApp();

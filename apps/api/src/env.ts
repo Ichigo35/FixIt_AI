@@ -33,4 +33,7 @@ export interface Env {
   // Rate limiting (primitive native Cloudflare ; absent en local/tests -> pas de limite).
   DIAGNOSE_RL?: RateLimit;
   UPLOAD_RL?: RateLimit;
+
+  /** KV : repos de bascule des modèles Gemini, partagé entre isolates (absent en local/tests). */
+  AI_STATE?: KVNamespace;
 }

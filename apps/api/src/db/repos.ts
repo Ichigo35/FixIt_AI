@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import {
   FREE_MONTHLY_DIAGNOSES,
   type DiagnosisResult,
@@ -197,6 +197,42 @@ export async function getDiagnosis(
   const imageIds = media.filter((m) => m.kind !== 'video').map((m) => uploadId(m.r2Key));
   const videoIds = media.filter((m) => m.kind === 'video').map((m) => uploadId(m.r2Key));
   return rowToResult(row, imageIds, videoIds);
+}
+
+/**
+ * Diagnostics récents d'un utilisateur (fenêtre `sinceMs`), avec leurs `imageIds` /
+ * `videoIds`. Sert à dédupliquer une requête identique (retour arrière, « Réessayer »
+ * après un timeout client alors que le serveur a déjà répondu) sans rappeler Gemini.
+ */
+export async function recentDiagnoses(
+  db: Db,
+  userId: string,
+  sinceMs: number,
+): Promise<StoredDiagnosis[]> {
+  const since = new Date(Date.now() - sinceMs);
+  const rows = await db
+    .select()
+    .from(diagnoses)
+    .where(and(eq(diagnoses.userId, userId), gt(diagnoses.createdAt, since)))
+    .orderBy(desc(diagnoses.createdAt))
+    .limit(20);
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r) => r.id);
+  const media = await db
+    .select({ diagnosisId: diagnosisImages.diagnosisId, r2Key: diagnosisImages.r2Key, kind: diagnosisImages.kind })
+    .from(diagnosisImages)
+    .where(inArray(diagnosisImages.diagnosisId, ids));
+  const uploadId = (r2Key: string) => r2Key.split('/').pop() ?? r2Key;
+
+  return rows.map((row) => {
+    const mine = media.filter((m) => m.diagnosisId === row.id);
+    return rowToResult(
+      row,
+      mine.filter((m) => m.kind !== 'video').map((m) => uploadId(m.r2Key)),
+      mine.filter((m) => m.kind === 'video').map((m) => uploadId(m.r2Key)),
+    );
+  });
 }
 
 export interface DiagnosisListItem {

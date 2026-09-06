@@ -1,5 +1,5 @@
 import type { Env } from '../env';
-import { FailoverGeminiProvider } from './geminiFailover';
+import { FailoverGeminiProvider, type CooldownStore } from './geminiFailover';
 import { MockProvider } from './mock';
 import type { AIProvider } from './types';
 
@@ -20,5 +20,9 @@ export function getAIProvider(env: Env): AIProvider {
   const primary = env.GEMINI_MODEL || 'gemini-3.6-flash';
   const fallback = (env.GEMINI_FALLBACK_MODEL ?? 'gemini-3.5-flash').trim();
   const models = fallback && fallback !== primary ? [primary, fallback] : [primary];
-  return new FailoverGeminiProvider(env.GEMINI_API_KEY, models);
+  return new FailoverGeminiProvider(
+    env.GEMINI_API_KEY,
+    models,
+    env.AI_STATE as CooldownStore | undefined,
+  );
 }

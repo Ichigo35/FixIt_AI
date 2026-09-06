@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { RepairStep, StepVerdict } from '@fixit/shared';
 import { uploadImage } from '@/api/uploads';
 import { verifyStep } from '@/api/repairSession';
@@ -47,6 +47,10 @@ export function StepCheck({
 }) {
   const theme = useTheme();
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
+  // Verrou anti double-tap : `capturePhoto()` est asynchrone (UI caméra) et la
+  // phase reste 'idle' pendant ce temps ⇒ sans lui un 2e tap lance une 2e
+  // capture puis une 2e requête `verify` (= 1 appel Gemini vision de trop).
+  const busy = useRef(false);
 
   const toneColor = (tone: 'success' | 'caution' | 'danger' | 'muted') =>
     tone === 'success'
@@ -67,10 +71,12 @@ export function StepCheck({
           : theme.colors.surface;
 
   const run = async () => {
-    const uri = await capturePhoto();
-    if (!uri) return;
-    setPhase({ name: 'working' });
+    if (busy.current || phase.name === 'working') return;
+    busy.current = true;
     try {
+      const uri = await capturePhoto();
+      if (!uri) return;
+      setPhase({ name: 'working' });
       const upload = await uploadImage(uri, 'step');
       const { check } = await verifyStep(diagnosisId, { stepIndex, imageId: upload.id });
       if (check.verdict === 'pass') haptics.success();
@@ -87,6 +93,8 @@ export function StepCheck({
     } catch (err) {
       haptics.error();
       setPhase({ name: 'error', message: friendlyError(err, 'repairGuide') });
+    } finally {
+      busy.current = false;
     }
   };
 

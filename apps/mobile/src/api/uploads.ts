@@ -1,3 +1,5 @@
+import { Image } from 'react-native';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import {
   MAX_VIDEO_BYTES,
   resolveImageContentType,
@@ -8,6 +10,15 @@ import {
 import { ApiError } from './ApiError';
 import { config } from '@/config';
 import { apiPostBinary, authBridge } from './client';
+
+/**
+ * Côté le plus long (px) auquel une photo est ramenée avant l'envoi. Un capteur
+ * de téléphone sort du 3000-4000 px ⇒ ~1500-1900 tokens d'image pour Gemini ;
+ * 1280 px suffit largement au diagnostic et aux repères, pour ~4× moins de
+ * tokens d'entrée (donc de quota) et un upload plus léger.
+ */
+const MAX_IMAGE_EDGE = 1280;
+const JPEG_COMPRESS = 0.72;
 
 /** Source d'image authentifiée pour <Image> (expo-image supporte `headers`). */
 export function imageSource(imageId: string) {
@@ -54,8 +65,41 @@ function retag(blob: Blob, contentType: string): Blob {
   return blob.slice(0, blob.size, contentType);
 }
 
+/** Dimensions d'une image locale (file:// / content://). */
+function measureImage(uri: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+  });
+}
+
+/**
+ * Redimensionne une photo à `MAX_IMAGE_EDGE` sur son côté le plus long et la
+ * réencode en JPEG. Best-effort : toute erreur ⇒ on renvoie l'URI d'origine
+ * (un upload ne doit jamais échouer à cause du redimensionnement).
+ * Renvoie l'URI (éventuellement nouvelle) + le type MIME à annoncer.
+ */
+async function downscaleImage(
+  uri: string,
+): Promise<{ uri: string; mime: string | null }> {
+  try {
+    const { width, height } = await measureImage(uri);
+    const longest = Math.max(width, height);
+    if (!longest || longest <= MAX_IMAGE_EDGE) return { uri, mime: null };
+    const scale = MAX_IMAGE_EDGE / longest;
+    const context = ImageManipulator.manipulate(uri);
+    context.resize({ width: Math.round(width * scale), height: Math.round(height * scale) });
+    const rendered = await context.renderAsync();
+    const out = await rendered.saveAsync({ compress: JPEG_COMPRESS, format: SaveFormat.JPEG });
+    return { uri: out.uri, mime: 'image/jpeg' };
+  } catch {
+    return { uri, mime: null };
+  }
+}
+
 /**
  * Lit un fichier local (file:// ou content://) et l'envoie au Worker.
+ * La photo est d'abord ramenée à `MAX_IMAGE_EDGE` px (économie d'upload + de
+ * tokens Gemini en aval).
  * Le type est ramené à une valeur canonique : les appareils Android (MIUI,
  * OPPO/ColorOS…) renvoient souvent un type non canonique, voire invalide,
  * pour `fetch(content://…).blob().type` — voir `retag()`.
@@ -67,9 +111,10 @@ export async function uploadImage(
   kind: UploadKind = 'problem',
   mimeHint?: string | null,
 ): Promise<UploadResult> {
-  const fileRes = await fetch(uri);
+  const scaled = await downscaleImage(uri);
+  const fileRes = await fetch(scaled.uri);
   const blob = await fileRes.blob();
-  const contentType = resolveImageContentType([mimeHint, blob.type, uri]);
+  const contentType = resolveImageContentType([scaled.mime, mimeHint, blob.type, scaled.uri]);
   return apiPostBinary<UploadResult>(
     `/uploads?kind=${encodeURIComponent(kind)}`,
     retag(blob, contentType),

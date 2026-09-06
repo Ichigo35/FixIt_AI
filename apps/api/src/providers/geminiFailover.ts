@@ -12,11 +12,21 @@ import {
 const DEFAULT_COOLDOWN_MS = 60_000;
 /** Borne haute : on re-teste le modèle préféré au moins une fois par heure. */
 const MAX_COOLDOWN_MS = 60 * 60_000;
+/** Clé KV unique où l'état de repos est partagé entre isolates. */
+const KV_COOLDOWN_KEY = 'gemini:cooldowns';
+
+/** Sous-ensemble de `KVNamespace` dont on a besoin (facultatif : absent en local/tests). */
+export interface CooldownStore {
+  get(key: string, type: 'json'): Promise<Record<string, number> | null>;
+  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
+}
 
 /**
- * État de repos partagé au niveau du module (donc par isolate Worker) : `model → timestamp`
- * avant lequel ce modèle ne doit pas être resollicité. Best-effort, comme le rate
- * limiting Cloudflare — un isolate neuf repart sur le modèle préféré.
+ * État de repos au niveau du module (donc par isolate Worker) : `model → timestamp`
+ * avant lequel ce modèle ne doit pas être resollicité. Sert de cache L1 ; quand un
+ * `CooldownStore` (KV) est fourni, il est aussi partagé entre isolates (L2) — sans
+ * lui, chaque isolate neuf recrame une requête 429 sur le modèle préféré avant de
+ * basculer.
  */
 const cooldownUntil = new Map<string, number>();
 
@@ -38,13 +48,15 @@ export class FailoverGeminiProvider implements AIProvider {
   readonly name = 'gemini';
   private readonly models: string[];
   private readonly byModel: Map<string, GeminiProvider>;
+  private readonly store?: CooldownStore;
   private lastUsedModel: string;
 
-  constructor(apiKey: string, models: string[]) {
+  constructor(apiKey: string, models: string[], store?: CooldownStore) {
     const unique = [...new Set(models.filter((m) => m.trim()))];
     if (unique.length === 0) throw new Error('FailoverGeminiProvider: au moins un modèle requis');
     this.models = unique;
     this.byModel = new Map(unique.map((m) => [m, new GeminiProvider(apiKey, m)]));
+    this.store = store;
     this.lastUsedModel = unique[0]!;
   }
 
@@ -74,24 +86,73 @@ export class FailoverGeminiProvider implements AIProvider {
     );
   }
 
+  /** Fusionne l'état de repos partagé (KV) dans le cache module — best-effort. */
+  private async loadSharedCooldowns(): Promise<void> {
+    if (!this.store) return;
+    try {
+      const shared = await this.store.get(KV_COOLDOWN_KEY, 'json');
+      if (!shared) return;
+      const now = Date.now();
+      for (const model of this.models) {
+        const until = shared[model];
+        if (typeof until === 'number' && until > now) {
+          cooldownUntil.set(model, Math.max(cooldownUntil.get(model) ?? 0, until));
+        }
+      }
+    } catch {
+      /* KV indisponible : on se contente du cache module */
+    }
+  }
+
+  /** Écrit l'état de repos courant dans le KV partagé — best-effort. */
+  private async persistCooldown(): Promise<void> {
+    if (!this.store) return;
+    const now = Date.now();
+    const blob: Record<string, number> = {};
+    let maxTtlMs = 0;
+    for (const model of this.models) {
+      const until = cooldownUntil.get(model) ?? 0;
+      if (until > now) {
+        blob[model] = until;
+        maxTtlMs = Math.max(maxTtlMs, until - now);
+      }
+    }
+    try {
+      if (maxTtlMs > 0) {
+        await this.store.put(KV_COOLDOWN_KEY, JSON.stringify(blob), {
+          expirationTtl: Math.max(60, Math.ceil(maxTtlMs / 1000)),
+        });
+      }
+    } catch {
+      /* KV indisponible : le cache module reste la source */
+    }
+  }
+
   private async run<T>(op: (p: GeminiProvider) => Promise<T>): Promise<T> {
+    await this.loadSharedCooldowns();
     const ordered = this.orderedModels();
     let lastError: AIProviderError | undefined;
+    let touchedCooldown = false;
 
     for (let i = 0; i < ordered.length; i++) {
       const model = ordered[i]!;
       try {
         const result = await op(this.byModel.get(model)!);
-        cooldownUntil.delete(model); // succès → le modèle est de nouveau sain
+        if (cooldownUntil.delete(model)) touchedCooldown = true; // succès → modèle de nouveau sain
         this.lastUsedModel = model;
+        if (touchedCooldown) await this.persistCooldown();
         return result;
       } catch (err) {
         const failoverable =
           err instanceof AIProviderError &&
           (err.code === 'ai_rate_limited' || err.code === 'ai_overloaded');
-        if (!failoverable) throw err;
+        if (!failoverable) {
+          if (touchedCooldown) await this.persistCooldown();
+          throw err;
+        }
         const wait = Math.min(err.retryAfterMs ?? DEFAULT_COOLDOWN_MS, MAX_COOLDOWN_MS);
         cooldownUntil.set(model, Date.now() + wait);
+        touchedCooldown = true;
         lastError = err;
         const next = ordered[i + 1];
         if (next) {
@@ -103,6 +164,7 @@ export class FailoverGeminiProvider implements AIProvider {
       }
     }
 
+    if (touchedCooldown) await this.persistCooldown();
     throw (
       lastError ??
       new AIProviderError(

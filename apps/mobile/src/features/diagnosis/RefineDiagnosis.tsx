@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import type { DiagnosisResult } from '@fixit/shared';
 import { Button, Card, Text } from '@/components';
@@ -16,10 +16,12 @@ export function RefineDiagnosis({ result }: { result: DiagnosisResult }) {
   const theme = useTheme();
   const router = useRouter();
   const [extra, setExtra] = useState('');
+  const submitted = useRef(false);
 
   const submit = () => {
     const details = extra.trim();
-    if (!details) return;
+    if (!details || submitted.current) return;
+    submitted.current = true;
     haptics.impact();
     const base = result.input.description?.trim();
     const description = base

@@ -454,8 +454,10 @@ revérifié en direct sur le device (OPPO CPH2799) pour les trois points.
    sinon 2ᵉ tap = 2ᵉ appel `verify` vision) ; `RefineDiagnosis.tsx` (`submitted` ref avant `router.push`).
 
 **Tests** : 163 verts (66 shared + 54 api + 43 mobile). `pnpm -r typecheck` + `pnpm lint` OK.
-**Reste à faire** : déployer le Worker (`pnpm --filter @fixit/api run deploy` — leviers 2/3/4) · `expo prebuild`
-+ rebuild APK (levier 1) · vérifier le redimensionnement + la dédup sur device réel.
+**Worker déployé** ✅ version `431bc954` (2026-09-06) — leviers 2/3/4 actifs en prod, `/health` OK.
+**APK release** ✅ 2026-09-06 (~52 Mo arm64) — leviers 1/5, buildé sans `expo prebuild` (autolinking Expo).
+**Reste à faire** : brancher le device (OPPO CPH2799) → `adb install -r` l'APK → vérifier le redimensionnement
+(taille d'upload via `wrangler tail --format json`) + la dédup (2× le même diagnostic → 2ᵉ instantané).
 
 ## Déploiement Cloudflare ✅ (2026-09-01)
 

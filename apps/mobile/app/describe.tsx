@@ -7,6 +7,7 @@ import {
   ExtraDetailsFields,
   type ExtraDetails,
 } from '@/features/diagnosis/ExtraDetailsFields';
+import { t } from '@/i18n';
 import { useTheme } from '@/theme';
 
 export default function DescribeScreen() {
@@ -23,24 +24,22 @@ export default function DescribeScreen() {
     if (extra.serialNumber) params.serialNumber = extra.serialNumber;
     if (extra.errorCode) params.errorCode = extra.errorCode;
     if (extra.measurements) params.measurements = extra.measurements;
+    if (extra.replacementCost != null) params.replacementCost = String(extra.replacementCost);
     if (extra.labelImageId) params.imageIds = JSON.stringify([extra.labelImageId]);
     router.push({ pathname: '/diagnosis/new', params });
   };
 
   return (
     <Screen scroll keyboardAware>
-      <Text variant="title">What happened?</Text>
-      <Text muted>
-        Describe the problem in a sentence or two. Examples: “The washing machine makes a loud
-        noise.” · “Water is leaking from underneath.” · “The computer won&apos;t turn on.”
-      </Text>
+      <Text variant="title">{t('describe.title')}</Text>
+      <Text muted>{t('describe.help')}</Text>
 
       <Card>
         <TextInput
           value={text}
           onChangeText={setText}
           multiline
-          placeholder="Describe the problem…"
+          placeholder={t('describe.placeholder')}
           placeholderTextColor={theme.colors.textMuted}
           style={{
             minHeight: 120,
@@ -55,13 +54,13 @@ export default function DescribeScreen() {
 
       <View style={{ gap: theme.spacing.sm }}>
         <Button
-          label="Analyze"
+          label={t('capture.analyze')}
           icon="🔍"
           disabled={text.trim().length < 8}
           onPress={submit}
         />
         <Text variant="caption" muted center>
-          A photo usually gives a much better diagnosis.
+          {t('describe.photoHint')}
         </Text>
       </View>
     </Screen>

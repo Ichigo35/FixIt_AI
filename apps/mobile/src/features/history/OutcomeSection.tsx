@@ -7,6 +7,7 @@ import { submitHistory } from '@/api/diagnoses';
 import { ApiError } from '@/api/ApiError';
 import { imageSourceFromKey, uploadImage } from '@/api/uploads';
 import { Button, Card, Text } from '@/components';
+import { t } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { useOutbox } from '@/lib/outbox';
 import { useTheme } from '@/theme';
@@ -56,7 +57,7 @@ export function OutcomeSection({
     } catch (err) {
       if (err instanceof ApiError) {
         haptics.error();
-        setError('Could not save. Try again.');
+        setError(t('diagnosis.outcomeSaveError'));
       } else {
         // Hors-ligne : on met en file et on reflète le résultat localement.
         enqueue({
@@ -88,7 +89,7 @@ export function OutcomeSection({
       });
       onUpdated(history);
     } catch {
-      setError('Upload failed.');
+      setError(t('diagnosis.outcomeUploadError'));
     } finally {
       setBusy(false);
     }
@@ -100,12 +101,12 @@ export function OutcomeSection({
     return (
       <Card style={{ backgroundColor: theme.colors.successBg, borderColor: theme.colors.success }}>
         <Text variant="heading" color={theme.colors.success}>
-          Problem solved 🎉
+          {t('diagnosis.outcomeSolved')}
         </Text>
         {latest?.feedbackNote ? <Text muted>{latest.feedbackNote}</Text> : null}
         {queued ? (
           <Text variant="caption" muted>
-            Saved — will sync when you’re back online.
+            {t('diagnosis.outcomeQueued')}
           </Text>
         ) : null}
         {before || after ? (
@@ -113,7 +114,7 @@ export function OutcomeSection({
             {before ? (
               <View style={{ flex: 1, gap: 4 }}>
                 <Text variant="caption" muted>
-                  BEFORE
+                  {t('diagnosis.outcomeBefore')}
                 </Text>
                 <Image source={before} style={{ width: '100%', aspectRatio: 1, borderRadius: theme.radii.md }} contentFit="cover" />
               </View>
@@ -121,7 +122,7 @@ export function OutcomeSection({
             {after ? (
               <View style={{ flex: 1, gap: 4 }}>
                 <Text variant="caption" muted>
-                  AFTER
+                  {t('diagnosis.outcomeAfter')}
                 </Text>
                 <Image source={after} style={{ width: '100%', aspectRatio: 1, borderRadius: theme.radii.md }} contentFit="cover" />
               </View>
@@ -130,7 +131,7 @@ export function OutcomeSection({
         ) : null}
         {!after ? (
           <Button
-            label="Add an 'after' photo"
+            label={t('diagnosis.outcomeAddAfter')}
             variant="secondary"
             loading={busy}
             onPress={addAfterPhoto}
@@ -142,15 +143,15 @@ export function OutcomeSection({
 
   return (
     <Card>
-      <Text variant="heading">Did this fix it?</Text>
+      <Text variant="heading">{t('diagnosis.outcomeQuestion')}</Text>
       {mode === 'note' ? (
         <View style={{ gap: theme.spacing.sm }}>
-          <Text muted>What happened?</Text>
+          <Text muted>{t('diagnosis.outcomeWhatHappened')}</Text>
           <TextInput
             value={note}
             onChangeText={setNote}
             multiline
-            placeholder="It didn't work because…"
+            placeholder={t('diagnosis.outcomeNotePlaceholder')}
             placeholderTextColor={theme.colors.textMuted}
             style={{
               minHeight: 80,
@@ -160,7 +161,7 @@ export function OutcomeSection({
             }}
           />
           <Button
-            label="Submit"
+            label={t('diagnosis.outcomeSubmit')}
             loading={busy}
             onPress={() =>
               send({ outcome: 'not_fixed', feedbackWorked: false, feedbackNote: note.trim() || null })
@@ -170,19 +171,19 @@ export function OutcomeSection({
       ) : (
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' }}>
           <Button
-            label="👍 Yes"
+            label={t('diagnosis.outcomeYes')}
             fullWidth={false}
             loading={busy}
             onPress={() => send({ outcome: 'fixed', feedbackWorked: true })}
           />
           <Button
-            label="👎 No"
+            label={t('diagnosis.outcomeNo')}
             variant="secondary"
             fullWidth={false}
             onPress={() => setMode('note')}
           />
           <Button
-            label="🔧 Called a pro"
+            label={t('diagnosis.outcomeCalledPro')}
             variant="secondary"
             fullWidth={false}
             onPress={() => send({ outcome: 'pro' })}
@@ -196,7 +197,7 @@ export function OutcomeSection({
       ) : null}
       {queued ? (
         <Text variant="caption" muted>
-          Saved — will sync when you’re back online.
+          {t('diagnosis.outcomeQueued')}
         </Text>
       ) : null}
     </Card>

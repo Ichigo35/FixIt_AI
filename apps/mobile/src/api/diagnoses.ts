@@ -45,6 +45,7 @@ export interface CreateDiagnosisInput {
   serialNumber?: string | null;
   errorCode?: string | null;
   measurements?: string | null;
+  replacementCost?: number | null;
   imageIds?: string[];
   videoIds?: string[];
   audioIds?: string[];
@@ -59,6 +60,7 @@ export function createDiagnosis(input: CreateDiagnosisInput): Promise<DiagnosisR
     serialNumber: input.serialNumber ?? null,
     errorCode: input.errorCode ?? null,
     measurements: input.measurements ?? null,
+    replacementCost: input.replacementCost ?? null,
     imageIds: input.imageIds ?? [],
     videoIds: input.videoIds ?? [],
     audioIds: input.audioIds ?? [],

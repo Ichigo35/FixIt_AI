@@ -39,6 +39,8 @@ export const diagnoses = pgTable(
     errorCode: text('error_code'),
     /** Mesures relevées par l'utilisateur (texte libre). */
     measurements: text('measurements'),
+    /** Prix du neuf approximatif saisi par l'utilisateur (verdict « réparer ou remplacer »). */
+    replacementCost: real('replacement_cost'),
     userDescription: text('user_description').notNull().default(''),
     problem: text('problem').notNull(),
     confidence: real('confidence').notNull(),

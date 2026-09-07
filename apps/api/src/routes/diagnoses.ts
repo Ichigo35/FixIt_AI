@@ -62,6 +62,7 @@ function diagnosisFingerprint(input: {
   errorCode?: string | null;
   measurements?: string | null;
   serialNumber?: string | null;
+  replacementCost?: number | null;
 }): string {
   return JSON.stringify({
     d: input.description.trim(),
@@ -72,6 +73,7 @@ function diagnosisFingerprint(input: {
     e: input.errorCode?.trim() ?? null,
     m: input.measurements?.trim() ?? null,
     s: input.serialNumber?.trim() ?? null,
+    rc: input.replacementCost ?? null,
   });
 }
 
@@ -128,6 +130,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     errorCode,
     measurements,
     serialNumber,
+    replacementCost: req.replacementCost ?? null,
   });
   for (const prev of await recentDiagnoses(db, userId, DEDUP_WINDOW_MS)) {
     const prevFp = diagnosisFingerprint({
@@ -136,6 +139,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       imageIds: prev.input.imageIds,
       videoIds: prev.input.videoIds ?? [],
       audioIds: prev.input.audioIds ?? [],
+      replacementCost: prev.input.replacementCost ?? null,
       errorCode: prev.input.errorCode ?? null,
       measurements: prev.input.measurements ?? null,
       serialNumber: prev.input.serialNumber ?? null,
@@ -232,6 +236,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       serialNumber,
       errorCode,
       measurements,
+      replacementCost: req.replacementCost ?? null,
       imageIds: req.imageIds,
       videoIds: req.videoIds,
       audioIds: req.audioIds,

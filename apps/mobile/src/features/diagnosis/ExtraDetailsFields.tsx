@@ -14,6 +14,8 @@ export interface ExtraDetails {
   serialNumber: string | null;
   errorCode: string | null;
   measurements: string | null;
+  /** Prix du neuf approximatif (verdict « réparer ou remplacer »). */
+  replacementCost: number | null;
   /** id d'upload de la photo de plaque signalétique (kind=label), à concaténer aux imageIds. */
   labelImageId: string | null;
 }
@@ -24,6 +26,7 @@ export const EMPTY_EXTRA_DETAILS: ExtraDetails = {
   serialNumber: null,
   errorCode: null,
   measurements: null,
+  replacementCost: null,
   labelImageId: null,
 };
 
@@ -44,6 +47,7 @@ export function ExtraDetailsFields({ onChange }: { onChange: (v: ExtraDetails) =
   const [serial, setSerial] = useState('');
   const [errorCode, setErrorCode] = useState('');
   const [measurements, setMeasurements] = useState('');
+  const [replacementCost, setReplacementCost] = useState('');
   const [label, setLabel] = useState<{ status: 'idle' | 'uploading' | 'done' | 'error'; id: string | null }>({
     status: 'idle',
     id: null,
@@ -52,15 +56,17 @@ export function ExtraDetailsFields({ onChange }: { onChange: (v: ExtraDetails) =
 
   // `onChange` est attendu stable (useCallback côté appelant) ; on ré-émet à chaque frappe.
   useEffect(() => {
+    const rc = Number.parseFloat(replacementCost.replace(',', '.'));
     onChange({
       brand: clean(brand),
       model: clean(model),
       serialNumber: clean(serial),
       errorCode: clean(errorCode),
       measurements: clean(measurements),
+      replacementCost: Number.isFinite(rc) && rc > 0 ? rc : null,
       labelImageId: label.id,
     });
-  }, [onChange, brand, model, serial, errorCode, measurements, label.id]);
+  }, [onChange, brand, model, serial, errorCode, measurements, replacementCost, label.id]);
 
   const pickLabel = useCallback(async () => {
     if (uploading.current) return;
@@ -199,6 +205,20 @@ export function ExtraDetailsFields({ onChange }: { onChange: (v: ExtraDetails) =
             placeholder={t('extra.measurementsPlaceholder')}
             placeholderTextColor={theme.colors.textMuted}
             style={{ ...fieldStyle, minHeight: 64, textAlignVertical: 'top' }}
+          />
+        </View>
+
+        <View>
+          <Text variant="caption" muted>
+            {t('extra.replacementCost')}
+          </Text>
+          <TextInput
+            value={replacementCost}
+            onChangeText={setReplacementCost}
+            keyboardType="decimal-pad"
+            placeholder={t('extra.replacementCostPlaceholder')}
+            placeholderTextColor={theme.colors.textMuted}
+            style={fieldStyle}
           />
         </View>
       </View>

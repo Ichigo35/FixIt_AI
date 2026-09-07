@@ -73,6 +73,7 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
     if (extra.serialNumber) p.serialNumber = extra.serialNumber;
     if (extra.errorCode) p.errorCode = extra.errorCode;
     if (extra.measurements) p.measurements = extra.measurements;
+    if (extra.replacementCost != null) p.replacementCost = String(extra.replacementCost);
     return p;
   };
 

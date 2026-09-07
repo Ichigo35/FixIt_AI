@@ -29,6 +29,13 @@
       "when": 1788745769941,
       "tag": "0003_add_error_code_measurements",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788746791116,
+      "tag": "0004_add_replacement_cost",
+      "breakpoints": true
     }
   ]
 }

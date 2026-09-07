@@ -413,12 +413,14 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
         serialNumber: 'VF1AAAA00AA000000',
         errorCode: 'p0300',
         measurements: 'battery 12.4 V engine off, 13.9 V running; fuel rail 42 psi',
+        replacementCost: 4200,
       },
       e,
       uid,
     );
     expect(res.status).toBe(201);
     const body = (await res.json()) as Record<string, any>;
+    expect(body.input.replacementCost).toBe(4200);
     // Le MockProvider reflète le code résolu (DTC générique connu).
     expect(body.diagnosis.problem).toMatch(/P0300/); // normalisé au format canonique
     expect(body.diagnosis.problem.toLowerCase()).toMatch(/misfire/);
@@ -433,6 +435,7 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(detail.input.errorCode).toBe('P0300');
     expect(detail.input.measurements).toMatch(/fuel rail/);
     expect(detail.input.serialNumber).toBe('VF1AAAA00AA000000');
+    expect(detail.input.replacementCost).toBe(4200);
 
     // Dédup : un errorCode différent ⇒ nouveau diagnostic (quota consommé).
     const res2 = await post(

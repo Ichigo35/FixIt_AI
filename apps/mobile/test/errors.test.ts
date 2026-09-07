@@ -11,6 +11,9 @@ describe('friendlyError', () => {
       /free diagnoses this month/i,
     );
     expect(friendlyError(new ApiError(413, 'payload_too_large'), 'upload')).toMatch(/too large/i);
+    expect(friendlyError(new ApiError(400, 'need_description_for_audio'), 'diagnosis')).toMatch(
+      /noise happens/i,
+    );
   });
 
   it('applique la retouche par contexte quand elle existe', () => {

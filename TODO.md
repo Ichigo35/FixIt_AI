@@ -162,7 +162,20 @@ Trois champs facultatifs qui affinent le diagnostic — **aucune requête Gemini
 - ✅ **Composant partagé** `src/features/diagnosis/ExtraDetailsFields.tsx` (replié par défaut) branché dans `CaptureFlow` **et** `describe.tsx` ; `diagnosisFingerprint` inclut `errorCode`/`measurements`/`serialNumber` (dédup correcte) ; `RefineDiagnosis` propage les 5 champs. i18n FR/EN (`extra.*`).
 - ✅ **189 tests** (79 shared + 63 api + 47 mobile), `typecheck` + `lint` verts. Worker bundle 1,34 Mo / **252 Ko gzip** (limite CF 1 Mo gzip → large marge).
 - ✅ **Worker déployé** (2026-09-07, version `febf8f9d`, `/health` OK).
-- ⏳ **Reste** : **vérif device** (diagnostic voiture `P0300` → explication du code ; photo de plaque → carte « IDENTIFIED MODEL ») — sur un APK groupé avec la PHASE 11 ; i18n de `describe.tsx` (fait en PHASE 13d).
+- ⏳ **Reste** : **vérif device** (diagnostic voiture `P0300` → explication du code ; photo de plaque → carte « IDENTIFIED MODEL ») — sur un APK groupé avec les PHASES 11+13.
+
+---
+
+## PHASE 13 — RESTITUTION 🚧 (2026-09-07)
+
+Questions interactives · « réparer ou remplacer » · STOP par domaine · i18n des écrans de diagnostic.
+
+- ✅ **13a Questions de clarification interactives** (= multi-tours léger) : `RefineDiagnosis` rend `diagnosis.moreInfoNeeded` comme une **liste de questions**, chacune avec son champ de réponse (state `answers: Record<number,string>`) + champ libre. À la soumission : concaténation `description d'origine + "User's answers:\n- {q} → {a}"` + `router.push('/diagnosis/new', …)` (re-soumission client, non consommée pour illimité, fingerprint différent). Propage tous les champs (`brand`/`model`/`serialNumber`/`errorCode`/`measurements`/`replacementCost`/médias). La carte « MORE INFORMATION » de `DiagnosisResultView` est **retirée** (fondue dans `RefineDiagnosis`).
+- ✅ **13b « Vaut le coup de réparer ? »** : `packages/shared/src/repairability/verdict.ts` `repairVsReplace()` **pur** (score → `repair`/`borderline`/`replace` ; ratio coût réparation médian / prix du neuf si fourni ; pénalités `partsAvailability==='uncommon'`, `riskOfWorseningDamage==='high'`, score bas). `createDiagnosisRequestSchema.replacementCost` (nombre > 0) + `diagnosisResultSchema.input.replacementCost` + colonne `replacement_cost` (**migration `0004`**, appliquée branche Neon). `DiagnosisResultView` : carte **« REPAIR OR REPLACE »** (verdict coloré + ratio + dispo pièces + risque d'aggraver — ces 2 derniers **déjà générés, jamais affichés**). Champ « prix du neuf » ajouté dans `ExtraDetailsFields` (`keyboardType="decimal-pad"`) ; le verdict marche aussi sans (score seul).
+- ✅ **13c STOP spécifiques par domaine** : `safety/classifier.ts` — nouvelles `TextRule` FR+EN : `refrigerant` (fluide frigorigène / R-134a… → **CRITICAL forcedStop** : manipulation légalement encadrée), `airbag` (SRS / prétensionneur → **CRITICAL forcedStop**), `vehicle_lifted` (voiture sur cric/chandelles → HIGH), `working_at_height` (échelle / toit / gouttières → HIGH). Tokens de danger `airbag`/`refrigerant`/`working_at_height`/… → plancher de risque. **Règle d'or respectée** (ne peut que durcir).
+- ✅ **13d i18n** : namespace `diagnosis.*` (FR/EN, parité testée) → `DiagnosisResultView`, `StopView`, `RefineDiagnosis`, `OutcomeSection` migrés à `t()` ; `describe.tsx` migré (namespace `describe.*`) ; `lib/errors.ts` : `need_description_for_audio` ajouté (reste EN — module pur hors Expo, i18n complète = plus tard).
+- ✅ **199 tests** (89 shared + 63 api + 47 mobile), `typecheck` + `lint` verts.
+- ⏳ **Reste** : déployer le Worker (classifier + `replacementCost`) ; **vérif device** (questions cliquables → re-diagnostic affiné ; carte « réparer ou remplacer » ; « fluide frigorigène » → écran STOP) ; i18n de `lib/errors.ts` (module pur hors Expo).
 
 ## PHASE 10 — POLISH ✅ (1re passe)
 

@@ -130,4 +130,55 @@ describe('classifySafety', () => {
     expect(r.forcedStop).toBe(true);
     expect(r.riskLevel).toBe('CRITICAL');
   });
+
+  it('circuit frigorifique (fluide frigorigène) -> CRITICAL + arrêt forcé', () => {
+    const r = classifySafety({
+      category: 'appliance',
+      description: 'the fridge is not cooling, I think it is low on refrigerant',
+      diagnosis: raw({ problem: 'Refrigerant leak in the sealed system', severity: 'MEDIUM' }),
+    });
+    expect(r.riskLevel).toBe('CRITICAL');
+    expect(r.forcedStop).toBe(true);
+    expect(r.recommendation).toBe('PROFESSIONAL');
+  });
+
+  it('système airbag -> CRITICAL + arrêt forcé', () => {
+    const r = classifySafety({
+      category: 'vehicle',
+      description: 'the SRS light stays on and I want to reset the airbag module',
+      diagnosis: raw({ problem: 'Airbag system fault', severity: 'LOW' }),
+    });
+    expect(r.forcedStop).toBe(true);
+    expect(r.recommendation).toBe('PROFESSIONAL');
+  });
+
+  it('voiture sur chandelles -> HIGH sans arrêt forcé', () => {
+    const r = classifySafety({
+      category: 'vehicle',
+      description: 'car is up on axle stands and I am working underneath to change the oil',
+      diagnosis: raw({ problem: 'Routine oil change', severity: 'LOW' }),
+    });
+    expect(r.riskLevel).toBe('HIGH');
+    expect(r.forcedStop).toBe(false);
+    expect(r.recommendation).toBe('PROFESSIONAL');
+  });
+
+  it('travail sur le toit / échelle (maison) -> HIGH sans arrêt forcé', () => {
+    const r = classifySafety({
+      category: 'home_installation',
+      description: 'I need to go up on the roof to clean the gutters and reseal a tile',
+      diagnosis: raw({ problem: 'Cracked roof tile', severity: 'LOW' }),
+    });
+    expect(r.riskLevel).toBe('HIGH');
+    expect(r.forcedStop).toBe(false);
+  });
+
+  it('une nouvelle règle ne peut pas adoucir une reco IA déjà PROFESSIONAL', () => {
+    const r = classifySafety({
+      category: 'vehicle',
+      description: 'car on ramps for an oil change',
+      diagnosis: raw({ needsProfessional: true, severity: 'HIGH', problem: 'oil change' }),
+    });
+    expect(r.recommendation).toBe('PROFESSIONAL');
+  });
 });

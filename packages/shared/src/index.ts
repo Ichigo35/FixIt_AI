@@ -8,4 +8,5 @@ export * from './icons';
 export * from './scenes';
 export * from './safety/classifier';
 export * from './repairability/score';
+export * from './repairability/verdict';
 export * from './pipeline';

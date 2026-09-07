@@ -83,8 +83,40 @@ const TEXT_RULES: TextRule[] = [
     forcedStop: true,
     reason: 'Possible structural / load-bearing failure',
   },
+  {
+    id: 'refrigerant',
+    patterns:
+      /\b(refrigerant|fluide frigorig[èe]ne|r-?134a|r-?600a|r-?410a|r-?32|r-?12|freon|fr[ée]on|recharge (the )?(a\/?c|air ?con|climatisation)|recharger la clim|regas|top up the gas|sealed (refrigeration|cooling) (system|circuit)|circuit frigorifique)\b/i,
+    level: 'CRITICAL',
+    forcedStop: true,
+    reason: 'Sealed refrigerant circuit — handling is legally restricted and needs certified equipment',
+  },
+  {
+    id: 'airbag',
+    patterns:
+      /\b(airbag|air ?bag|srs (light|module|system|unit)|coussin gonflable|pr[ée]tensionneur|seat ?belt (pre)?tensioner|pyrotechnic|clockspring|squib)\b/i,
+    level: 'CRITICAL',
+    forcedStop: true,
+    reason: 'Airbag / pyrotechnic restraint system — risk of accidental deployment',
+  },
 
   // --- Dangers sérieux, mais on montre quand même le diagnostic ---
+  {
+    id: 'vehicle_lifted',
+    patterns:
+      /\b(on (a |the )?(jack|axle stands?|jack stands?|ramps?|car lift|hoist|two-post lift)|sur (un |le )?(cric|chandelles?|pont [ée]l[ée]vateur|rampes?)|under(neath)? the (car|vehicle|truck)|sous (la voiture|le v[ée]hicule)|raise the (car|vehicle)|lever la voiture|crawl under)\b/i,
+    level: 'HIGH',
+    forcedStop: false,
+    reason: 'Working under a raised vehicle — crush risk if it is not properly supported',
+  },
+  {
+    id: 'working_at_height',
+    patterns:
+      /\b(on (a |the )?(ladder|roof|rooftop|scaffold(ing)?|extension ladder)|sur (une |le )?([ée]chelle|toit|toiture|[ée]chafaudage)|clean(ing)? the gutters?|nettoyer les goutti[èe]res|up on the roof|monter sur le toit|work(ing)? at height|travail en hauteur)\b/i,
+    level: 'HIGH',
+    forcedStop: false,
+    reason: 'Working at height — fall risk',
+  },
   {
     id: 'pressure_vessel',
     patterns:
@@ -145,6 +177,13 @@ const HAZARD_TOKEN_FLOOR: Record<string, RiskLevel> = {
   pressure: 'HIGH',
   pressurized: 'HIGH',
   refrigerant: 'HIGH',
+  airbag: 'HIGH',
+  srs: 'HIGH',
+  working_at_height: 'MEDIUM',
+  fall: 'MEDIUM',
+  fall_hazard: 'MEDIUM',
+  vehicle_lifted: 'HIGH',
+  crush: 'HIGH',
   structural: 'HIGH',
   asbestos: 'HIGH',
   chemical: 'HIGH',

@@ -1,0 +1,1 @@
+ALTER TABLE "diagnoses" ADD COLUMN "replacement_cost" real;

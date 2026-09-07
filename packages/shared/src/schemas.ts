@@ -301,6 +301,8 @@ export const createDiagnosisRequestSchema = z.object({
   errorCode: z.string().max(40).nullable().optional(),
   /** Mesures relevées par l'utilisateur (tension, résistance, pression, température…), texte libre. */
   measurements: z.string().max(600).nullable().optional(),
+  /** Prix du neuf approximatif saisi par l'utilisateur (pour le verdict « réparer ou remplacer »). */
+  replacementCost: z.number().positive().max(1_000_000).nullable().optional(),
   imageIds: z.array(z.string().uuid()).max(6).default([]),
   videoIds: z.array(z.string().uuid()).max(1).default([]),
   audioIds: z.array(z.string().uuid()).max(1).default([]),
@@ -399,6 +401,7 @@ export const diagnosisResultSchema = z.object({
     serialNumber: z.string().nullable().default(null),
     errorCode: z.string().nullable().default(null),
     measurements: z.string().nullable().default(null),
+    replacementCost: z.number().nullable().default(null),
     imageIds: z.array(z.string()),
     videoIds: z.array(z.string()).default([]),
     audioIds: z.array(z.string()).default([]),

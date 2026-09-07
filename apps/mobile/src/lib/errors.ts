@@ -14,6 +14,7 @@ const BY_CODE: Record<string, string> = {
   quota_exceeded:
     "You've used all your free diagnoses this month. Upgrade to Premium for unlimited.",
   need_photo_or_description: 'Add a photo or a description first.',
+  need_description_for_audio: 'Add a few words about the item and when the noise happens.',
   guide_unavailable:
     'This problem is not safe to attempt yourself — no guide is available.',
   not_found: 'This item no longer exists.',

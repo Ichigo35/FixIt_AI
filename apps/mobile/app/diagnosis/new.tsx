@@ -36,6 +36,7 @@ export default function NewDiagnosisScreen() {
     serialNumber?: string;
     errorCode?: string;
     measurements?: string;
+    replacementCost?: string;
   }>();
   const [state, setState] = useState<State>({ phase: 'loading' });
   const started = useRef(false);
@@ -51,6 +52,7 @@ export default function NewDiagnosisScreen() {
         serialNumber: params.serialNumber ?? null,
         errorCode: params.errorCode ?? null,
         measurements: params.measurements ?? null,
+        replacementCost: params.replacementCost ? Number(params.replacementCost) : null,
         imageIds: parseIds(params.imageIds),
         videoIds: parseIds(params.videoIds),
         audioIds: parseIds(params.audioIds),
@@ -77,6 +79,7 @@ export default function NewDiagnosisScreen() {
     params.serialNumber,
     params.errorCode,
     params.measurements,
+    params.replacementCost,
   ]);
 
   useEffect(() => {

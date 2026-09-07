@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
-import { RECOMMENDATION_META, type DiagnosisResult } from '@fixit/shared';
+import { RECOMMENDATION_META, repairVsReplace, type DiagnosisResult } from '@fixit/shared';
 import {
   Button,
   Card,
@@ -10,6 +10,7 @@ import {
   RiskBadge,
   Text,
 } from '@/components';
+import { t } from '@/i18n';
 import { haptics } from '@/lib/haptics';
 import { useMe } from '@/lib/me';
 import { useTheme } from '@/theme';
@@ -18,17 +19,22 @@ import { RefineDiagnosis } from './RefineDiagnosis';
 import { RepairabilityMeter } from './RepairabilityMeter';
 
 function formatCost(cost: DiagnosisResult['diagnosis']['estimatedCost']): string {
-  if (!cost) return 'Cost estimate unavailable';
+  if (!cost) return t('diagnosis.costUnavailable');
   const c = cost.currency === 'USD' ? '$' : `${cost.currency} `;
   return cost.min === cost.max ? `${c}${cost.min}` : `${c}${cost.min}–${cost.max}`;
 }
 
 function formatTime(min?: number | null): string {
-  if (!min) return 'Time estimate unavailable';
-  if (min < 60) return `~${min} min`;
-  const h = Math.round((min / 60) * 10) / 10;
-  return `~${h} h`;
+  if (!min) return t('diagnosis.timeUnavailable');
+  if (min < 60) return t('diagnosis.aboutMin', { n: min });
+  return t('diagnosis.aboutHours', { n: Math.round((min / 60) * 10) / 10 });
 }
+
+const RVR_LABEL = {
+  repair: 'diagnosis.rvrRepair',
+  borderline: 'diagnosis.rvrBorderline',
+  replace: 'diagnosis.rvrReplace',
+} as const;
 
 export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
   const theme = useTheme();
@@ -40,6 +46,32 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
   const proBlocked = isPro && !isAdmin;
   const rec = RECOMMENDATION_META[safety.recommendation];
 
+  const rvr = repairVsReplace({
+    estimatedCost: diagnosis.estimatedCost ?? null,
+    repairabilityScore: repairability.score,
+    partsAvailability: diagnosis.partsAvailability,
+    riskOfWorseningDamage: diagnosis.riskOfWorseningDamage,
+    replacementCost: result.input.replacementCost ?? null,
+  });
+  const rvrTone =
+    rvr.verdict === 'repair'
+      ? theme.colors.success
+      : rvr.verdict === 'replace'
+        ? theme.colors.danger
+        : theme.colors.caution;
+  const partsLine =
+    diagnosis.partsAvailability === 'common'
+      ? t('diagnosis.rvrPartsCommon')
+      : diagnosis.partsAvailability === 'uncommon'
+        ? t('diagnosis.rvrPartsUncommon')
+        : t('diagnosis.rvrPartsUnknown');
+  const riskLine =
+    diagnosis.riskOfWorseningDamage === 'low'
+      ? t('diagnosis.rvrRiskLow')
+      : diagnosis.riskOfWorseningDamage === 'high'
+        ? t('diagnosis.rvrRiskHigh')
+        : t('diagnosis.rvrRiskMedium');
+
   const openGuide = () => {
     haptics.impact();
     router.push({ pathname: '/repair/[id]', params: { id: result.id } });
@@ -50,11 +82,11 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
       <FadeInView delay={0}>
         <Card elevated>
           <Text variant="caption" muted>
-            LIKELY PROBLEM
+            {t('diagnosis.likelyProblem')}
           </Text>
           <Text variant="title">{diagnosis.problem}</Text>
           <Text variant="caption" muted>
-            Confidence {Math.round(diagnosis.confidence * 100)}%
+            {t('diagnosis.confidence', { pct: Math.round(diagnosis.confidence * 100) })}
           </Text>
           <View
             style={{
@@ -90,7 +122,7 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
         <FadeInView delay={60}>
           <Card>
             <Text variant="caption" muted>
-              IDENTIFIED MODEL
+              {t('diagnosis.identifiedModel')}
             </Text>
             {diagnosis.identifiedModel.brand || diagnosis.identifiedModel.model ? (
               <Text variant="bodyStrong">
@@ -101,7 +133,7 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
             ) : null}
             {diagnosis.identifiedModel.serialNumber ? (
               <Text variant="caption" muted>
-                S/N {diagnosis.identifiedModel.serialNumber}
+                {t('diagnosis.serial', { value: diagnosis.identifiedModel.serialNumber })}
               </Text>
             ) : null}
           </Card>
@@ -114,16 +146,36 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
           <View style={{ flexDirection: 'row', gap: theme.spacing.xl, marginTop: theme.spacing.sm }}>
             <View>
               <Text variant="caption" muted>
-                TIME
+                {t('diagnosis.time')}
               </Text>
               <Text variant="bodyStrong">{formatTime(diagnosis.estimatedTimeMinutes)}</Text>
             </View>
             <View>
               <Text variant="caption" muted>
-                COST
+                {t('diagnosis.cost')}
               </Text>
               <Text variant="bodyStrong">{formatCost(diagnosis.estimatedCost)}</Text>
             </View>
+          </View>
+        </Card>
+      </FadeInView>
+
+      <FadeInView delay={100}>
+        <Card style={{ borderColor: rvrTone }}>
+          <Text variant="caption" muted>
+            {t('diagnosis.rvrTitle')}
+          </Text>
+          <Text variant="heading" color={rvrTone}>
+            {t(RVR_LABEL[rvr.verdict])}
+          </Text>
+          {rvr.ratio != null ? (
+            <Text variant="caption" muted>
+              {t('diagnosis.rvrRatio', { pct: Math.round(rvr.ratio * 100) })}
+            </Text>
+          ) : null}
+          <View style={{ marginTop: theme.spacing.xs }}>
+            <Text variant="caption">• {partsLine}</Text>
+            <Text variant="caption">• {riskLine}</Text>
           </View>
         </Card>
       </FadeInView>
@@ -141,7 +193,7 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
       <FadeInView delay={210}>
         <Card>
           <Text variant="caption" muted>
-            POSSIBLE CAUSES
+            {t('diagnosis.possibleCauses')}
           </Text>
           {diagnosis.possibleCauses.map((cause, i) => (
             <Text key={cause}>
@@ -151,21 +203,6 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
         </Card>
       </FadeInView>
 
-      {diagnosis.moreInfoNeeded.length > 0 ? (
-        <FadeInView delay={280}>
-          <Card
-            style={{ backgroundColor: theme.colors.cautionBg, borderColor: theme.colors.caution }}
-          >
-            <Text variant="caption" color={theme.colors.caution}>
-              MORE INFORMATION WOULD HELP
-            </Text>
-            {diagnosis.moreInfoNeeded.map((q) => (
-              <Text key={q}>• {q}</Text>
-            ))}
-          </Card>
-        </FadeInView>
-      ) : null}
-
       <FadeInView delay={320}>
         <RefineDiagnosis result={result} />
       </FadeInView>
@@ -173,28 +210,29 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
       {isPro && isAdmin ? (
         <Card style={{ borderColor: theme.colors.caution }}>
           <Text variant="caption" color={theme.colors.caution}>
-            ⚠️ ADMIN OVERRIDE
+            {t('diagnosis.adminOverrideTitle')}
           </Text>
-          <Text muted>
-            This repair is normally professional-only. The guide is unlocked for your account —
-            follow every safety warning and stop if anything looks unsafe.
-          </Text>
+          <Text muted>{t('diagnosis.adminOverrideBody')}</Text>
         </Card>
       ) : null}
 
       <Button
         label={
           proBlocked
-            ? 'Repair guide not recommended'
+            ? t('diagnosis.guideBlocked')
             : isPro
-              ? 'Open repair guide (override)'
-              : 'Start Repair'
+              ? t('diagnosis.guideOverride')
+              : t('diagnosis.startRepair')
         }
         icon={proBlocked ? '⚠️' : '🛠️'}
         disabled={proBlocked}
         onPress={openGuide}
       />
-      <Button label="Back to home" variant="ghost" onPress={() => router.replace('/')} />
+      <Button
+        label={t('diagnosis.backHome')}
+        variant="ghost"
+        onPress={() => router.replace('/')}
+      />
     </View>
   );
 }

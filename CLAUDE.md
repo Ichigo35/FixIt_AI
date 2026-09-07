@@ -131,8 +131,8 @@ Temps de build **mesuré 2026-09-02** avec le script : **45 s** pour un rebuild 
 
 **Boucle rapide pour itérer sur le JS** (pas de rebuild APK) : garder l'APK debug/release installé + `pnpm mobile` (Metro) — le JS se recharge à chaud. Le rebuild APK ne sert que pour livrer une version installable autonome.
 NB : `git checkout apps/mobile/package.json` après `prebuild` ne fait que restaurer les scripts `android`/`ios` ; les vraies deps (dont `expo-video`) sont déjà committées.
-**Taille de l'APK (2026-09-07 : 52 Mo → ~23 Mo).** `build-android-release.sh` réinjecte tout après
-`expo prebuild` (via `ensure_prop` + append `proguard-rules.pro` + sed `app/build.gradle`) :
+**Taille de l'APK (2026-09-07 : 52 Mo → 23 Mo, mesuré).** `build-android-release.sh` réinjecte tout
+après `expo prebuild` (via `ensure_prop` + append `proguard-rules.pro` + append `app/build.gradle`) :
 - `expo.useLegacyPackaging=true` → `.so` **compressés** dans l'APK (26 Mo → 9 Mo ; `extractNativeLibs=true`,
   1er lancement à peine plus lent). **Le plus gros gain, zéro risque.**
 - `android.enableMinifyInReleaseBuilds=true` + `android.enableShrinkResourcesInReleaseBuilds=true`
@@ -148,8 +148,11 @@ NB : `git checkout apps/mobile/package.json` après `prebuild` ne fait que resta
   Sûr tant qu'on n'active jamais `onBarcodeScanned`/`barcodeScannerSettings`.
 - `expo.gif.enabled=false` → pas de décodeur GIF Fresco (on n'affiche aucun GIF).
 - `reactNativeArchitectures=arm64-v8a` (déjà en place).
-Reste ~0,9 Mo `libavif_android.so` + ~1 Mo font Material Symbols (`expo-symbols`, jamais utilisé) —
-non retirés (marginal, exclusion moins propre).
+Reste ~0,9 Mo `libavif_android.so`, ~1 Mo font Material Symbols (`expo-symbols`, jamais utilisé),
+~0,6 Mo modèles tflite ML Kit (`assets/mlkit_barcode_models/`, `resources.excludes` sans effet sur
+les assets) — non retirés (marginal). Vérif R8 post-build : `dexdump` sur `classes*.dex` → `MainActivity`,
+`MainApplication`, `expo/modules/{audio,camera,video,securestore,imagemanipulator,localization,crypto}/*Module`,
+`HermesExecutor`, `com/swmansion/reanimated/*` bien présents.
 `EXPO_PUBLIC_APP_ENV=production` est **impératif** pour OAuth (redirect_uri `/auth/callback` doit être joignable depuis le navigateur système). `eas.json` a des profils prêts si EAS est installé un jour.
 Tester OAuth : impossible en Expo Go (schéma natif `fixitai://`) → dev-client ou APK.
 

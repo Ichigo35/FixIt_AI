@@ -83,6 +83,31 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
         </FadeInView>
       ) : null}
 
+      {diagnosis.identifiedModel?.confident &&
+      (diagnosis.identifiedModel.brand ||
+        diagnosis.identifiedModel.model ||
+        diagnosis.identifiedModel.serialNumber) ? (
+        <FadeInView delay={60}>
+          <Card>
+            <Text variant="caption" muted>
+              IDENTIFIED MODEL
+            </Text>
+            {diagnosis.identifiedModel.brand || diagnosis.identifiedModel.model ? (
+              <Text variant="bodyStrong">
+                {[diagnosis.identifiedModel.brand, diagnosis.identifiedModel.model]
+                  .filter(Boolean)
+                  .join(' ')}
+              </Text>
+            ) : null}
+            {diagnosis.identifiedModel.serialNumber ? (
+              <Text variant="caption" muted>
+                S/N {diagnosis.identifiedModel.serialNumber}
+              </Text>
+            ) : null}
+          </Card>
+        </FadeInView>
+      ) : null}
+
       <FadeInView delay={70}>
         <Card>
           <RepairabilityMeter score={repairability.score} label={repairability.label} />

@@ -31,6 +31,11 @@ export default function NewDiagnosisScreen() {
     imageIds?: string;
     videoIds?: string;
     audioIds?: string;
+    brand?: string;
+    model?: string;
+    serialNumber?: string;
+    errorCode?: string;
+    measurements?: string;
   }>();
   const [state, setState] = useState<State>({ phase: 'loading' });
   const started = useRef(false);
@@ -41,6 +46,11 @@ export default function NewDiagnosisScreen() {
       const result = await createDiagnosis({
         description: params.description,
         category: (params.category as Category | undefined) ?? null,
+        brand: params.brand ?? null,
+        model: params.model ?? null,
+        serialNumber: params.serialNumber ?? null,
+        errorCode: params.errorCode ?? null,
+        measurements: params.measurements ?? null,
         imageIds: parseIds(params.imageIds),
         videoIds: parseIds(params.videoIds),
         audioIds: parseIds(params.audioIds),
@@ -56,7 +66,18 @@ export default function NewDiagnosisScreen() {
         canRetry: isRetryable(err),
       });
     }
-  }, [params.description, params.category, params.imageIds, params.videoIds, params.audioIds]);
+  }, [
+    params.description,
+    params.category,
+    params.imageIds,
+    params.videoIds,
+    params.audioIds,
+    params.brand,
+    params.model,
+    params.serialNumber,
+    params.errorCode,
+    params.measurements,
+  ]);
 
   useEffect(() => {
     if (started.current) return;

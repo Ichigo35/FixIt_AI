@@ -400,6 +400,59 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(store.has(`uploads/${up.id}`)).toBe(false);
   });
 
+  it('entrées enrichies : errorCode DTC + measurements + serialNumber persistés et exploités', async () => {
+    const uid = freshUser();
+    const e = env();
+    const app = createApp();
+
+    const res = await post(
+      app,
+      {
+        description: 'engine runs rough and the check-engine light is on',
+        category: 'vehicle',
+        serialNumber: 'VF1AAAA00AA000000',
+        errorCode: 'p0300',
+        measurements: 'battery 12.4 V engine off, 13.9 V running; fuel rail 42 psi',
+      },
+      e,
+      uid,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Record<string, any>;
+    // Le MockProvider reflète le code résolu (DTC générique connu).
+    expect(body.diagnosis.problem).toMatch(/P0300/); // normalisé au format canonique
+    expect(body.diagnosis.problem.toLowerCase()).toMatch(/misfire/);
+    expect(body.input.errorCode).toBe('P0300');
+    expect(body.input.measurements).toMatch(/42 psi/);
+    expect(body.input.serialNumber).toBe('VF1AAAA00AA000000');
+    expect(body.diagnosis.identifiedModel?.serialNumber).toBe('VF1AAAA00AA000000');
+
+    const detail = (await (
+      await app.request(`/diagnoses/${body.id}`, { headers: devAuth(uid) }, e)
+    ).json()) as Record<string, any>;
+    expect(detail.input.errorCode).toBe('P0300');
+    expect(detail.input.measurements).toMatch(/fuel rail/);
+    expect(detail.input.serialNumber).toBe('VF1AAAA00AA000000');
+
+    // Dédup : un errorCode différent ⇒ nouveau diagnostic (quota consommé).
+    const res2 = await post(
+      app,
+      {
+        description: 'engine runs rough and the check-engine light is on',
+        category: 'vehicle',
+        serialNumber: 'VF1AAAA00AA000000',
+        errorCode: 'p0301',
+        measurements: 'battery 12.4 V engine off, 13.9 V running; fuel rail 42 psi',
+      },
+      e,
+      uid,
+    );
+    const body2 = (await res2.json()) as Record<string, any>;
+    expect(res2.status).toBe(201);
+    expect(body2.id).not.toBe(body.id);
+    expect(body2.deduplicated).toBeUndefined();
+  });
+
   it('refuse un clip audio sans description (400 need_description_for_audio)', async () => {
     const uid = freshUser();
     const e = env();

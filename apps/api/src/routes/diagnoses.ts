@@ -31,6 +31,8 @@ import {
   saveRepairGuide,
   type ImageMeta,
 } from '../db/repos';
+import { normalizeDtc } from '@fixit/shared';
+import { lookupDtc } from '@fixit/shared/dtcData';
 import { AIProviderError, getAIProvider } from '../providers';
 import type { DiagnoseAudio, DiagnoseImage, DiagnoseVideo } from '../providers/types';
 import { getStorage } from '../storage';
@@ -57,6 +59,9 @@ function diagnosisFingerprint(input: {
   imageIds: string[];
   videoIds: string[];
   audioIds: string[];
+  errorCode?: string | null;
+  measurements?: string | null;
+  serialNumber?: string | null;
 }): string {
   return JSON.stringify({
     d: input.description.trim(),
@@ -64,6 +69,9 @@ function diagnosisFingerprint(input: {
     i: [...input.imageIds].sort(),
     v: [...input.videoIds].sort(),
     a: [...input.audioIds].sort(),
+    e: input.errorCode?.trim() ?? null,
+    m: input.measurements?.trim() ?? null,
+    s: input.serialNumber?.trim() ?? null,
   });
 }
 
@@ -98,6 +106,12 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     return c.json({ error: 'need_photo_or_description' }, 400);
   }
 
+  // Code d'erreur : normalisé au format canonique si c'est un DTC OBD-II générique.
+  const rawErrorCode = req.errorCode?.trim() || null;
+  const errorCode = rawErrorCode ? normalizeDtc(rawErrorCode) ?? rawErrorCode : null;
+  const measurements = req.measurements?.trim() || null;
+  const serialNumber = req.serialNumber?.trim() || null;
+
   const db = getDb(c.env);
   const userId = c.get('userId');
   const email = c.get('userEmail');
@@ -111,6 +125,9 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     imageIds: req.imageIds,
     videoIds: req.videoIds,
     audioIds: req.audioIds,
+    errorCode,
+    measurements,
+    serialNumber,
   });
   for (const prev of await recentDiagnoses(db, userId, DEDUP_WINDOW_MS)) {
     const prevFp = diagnosisFingerprint({
@@ -119,6 +136,9 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       imageIds: prev.input.imageIds,
       videoIds: prev.input.videoIds ?? [],
       audioIds: prev.input.audioIds ?? [],
+      errorCode: prev.input.errorCode ?? null,
+      measurements: prev.input.measurements ?? null,
+      serialNumber: prev.input.serialNumber ?? null,
     });
     if (prevFp === fingerprint) {
       const quota = await getQuota(db, userId);
@@ -170,6 +190,10 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     }
   }
 
+  // DTC générique connu ⇒ on joint sa signification standard au prompt (le modèle
+  // la reformule — cf. packages/shared/src/data/LICENSE.md).
+  const dtc = lookupDtc(errorCode);
+
   const provider = getAIProvider(c.env);
   let raw;
   try {
@@ -178,6 +202,10 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       category: req.category ?? null,
       brand: req.brand ?? null,
       model: req.model ?? null,
+      serialNumber,
+      errorCode,
+      errorCodeInfo: dtc?.description ?? null,
+      measurements,
       images,
       videos,
       audios,
@@ -201,6 +229,9 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       description: req.description,
       brand: req.brand ?? null,
       model: req.model ?? null,
+      serialNumber,
+      errorCode,
+      measurements,
       imageIds: req.imageIds,
       videoIds: req.videoIds,
       audioIds: req.audioIds,

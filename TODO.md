@@ -150,6 +150,20 @@ Diagnostic à partir d'un **court clip audio** (~30 s) + une **description oblig
 - ✅ **Worker déployé** (2026-09-07, version `4aeefdb2`, `/health` OK — audio rétrocompatible).
 - ⏳ **Reste** : **vérif sur device** (OPPO CPH2799 non branché) : enregistrer un bruit → diagnostic → relecture dans « My Repairs » + `wrangler tail --format json` (upload `audio/*`, part inline envoyée) ; test « live » Gemini audio opt-in (`GEMINI_LIVE_AUDIO`).
 
+---
+
+## PHASE 12 — ENTRÉES DE DIAGNOSTIC ENRICHIES 🚧 (2026-09-07)
+
+Trois champs facultatifs qui affinent le diagnostic — **aucune requête Gemini en plus**, juste plus de contexte dans le prompt.
+
+- ✅ **12a Plaque signalétique / modèle** : `identifiedModel` (marque/modèle/série) était **déjà** produit par Gemini + porté dans `rawDiagnosisSchema` mais jamais exploité. Route : `serialNumber` forwardé à `provider.diagnose` + persisté (colonne `serial_number` existante) + `result.input.serialNumber`. Prompt système : extraction **verbatim** de la plaque → `identifiedModel.confident`. `DiagnosisResultView` : carte **« IDENTIFIED MODEL »**. Mobile : bouton « Photo de la plaque signalétique » (caméra/galerie → `uploadImage(uri, 'label')` → id concaténé aux `imageIds`).
+- ✅ **12b Code d'erreur + base OBD-II** : dataset MIT `Wal33D/dtc-database` → `packages/shared/src/data/dtc-generic.json` (**9 415 codes génériques P/C/B/U**, 557 Ko, +74 Ko gzip). `packages/shared/src/dtc.ts` (`normalizeDtc`/`isDtcFormat`, léger, dans le barrel) + `dtcData.ts` (`lookupDtc`, **hors barrel** → jamais dans le bundle mobile ; import serveur `@fixit/shared/dtcData`). `createDiagnosisRequestSchema.errorCode`. Route : normalise le code au format canonique ; si DTC générique connu → `errorCodeInfo` (signification standard) injecté dans le prompt, **reformulé par le modèle**. Migration **`0003`** (`error_code` + `measurements` sur `diagnoses`) — appliquée sur la branche Neon (= prod, même branche). Mobile : champ « Code d'erreur » + indicateur « ✓ code OBD-II reconnu » (100 % local via `isDtcFormat`).
+- ✅ **12c Mesures** : `createDiagnosisRequestSchema.measurements` (texte libre ≤ 600). Route → prompt (« use them ; if a key measurement is missing, ask via moreInfoNeeded »). Persisté (colonne `measurements`). Mobile : champ multiligne.
+- ✅ **Composant partagé** `src/features/diagnosis/ExtraDetailsFields.tsx` (replié par défaut) branché dans `CaptureFlow` **et** `describe.tsx` ; `diagnosisFingerprint` inclut `errorCode`/`measurements`/`serialNumber` (dédup correcte) ; `RefineDiagnosis` propage les 5 champs. i18n FR/EN (`extra.*`).
+- ✅ **189 tests** (79 shared + 63 api + 47 mobile), `typecheck` + `lint` verts. Worker bundle 1,34 Mo / **252 Ko gzip** (limite CF 1 Mo gzip → large marge).
+- ✅ **Worker déployé** (2026-09-07, version `febf8f9d`, `/health` OK).
+- ⏳ **Reste** : **vérif device** (diagnostic voiture `P0300` → explication du code ; photo de plaque → carte « IDENTIFIED MODEL ») — sur un APK groupé avec la PHASE 11 ; i18n de `describe.tsx` (fait en PHASE 13d).
+
 ## PHASE 10 — POLISH ✅ (1re passe)
 
 - ✅ **Gestion d'erreurs centralisée** : `src/lib/errors.ts` (`friendlyError(err, context)` + `isRetryable`), pur, remplace les ternaires dupliquées dans `diagnosis/new`, `diagnosis/[id]`, `repair/[id]`, `history`, `CaptureFlow`, `auth`. `ApiError` extrait dans `src/api/ApiError.ts` (testable hors Expo).

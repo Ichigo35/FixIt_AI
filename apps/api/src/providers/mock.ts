@@ -30,10 +30,32 @@ export class MockProvider implements AIProvider {
       (input.videos?.length ?? 0) > 0 ||
       (input.audios?.length ?? 0) > 0;
 
+    // Reflète les entrées structurées pour que les tests puissent les vérifier.
+    const identifiedModel =
+      input.serialNumber || input.model || input.brand
+        ? {
+            brand: input.brand ?? null,
+            model: input.model ?? null,
+            serialNumber: input.serialNumber ?? null,
+            confident: Boolean(input.serialNumber),
+          }
+        : null;
+    const codeNote = input.errorCodeInfo
+      ? `Fault code ${input.errorCode}: ${input.errorCodeInfo}.`
+      : input.errorCode
+        ? `Reported code ${input.errorCode}.`
+        : '';
+
     return coerceRawDiagnosis({
-      problem: dangerous
-        ? 'Possible hazardous fault — more information needed'
-        : 'Likely a common wear-and-tear fault (mock diagnosis)',
+      problem: [
+        dangerous
+          ? 'Possible hazardous fault — more information needed'
+          : 'Likely a common wear-and-tear fault (mock diagnosis)',
+        codeNote,
+      ]
+        .filter(Boolean)
+        .join(' '),
+      identifiedModel,
       confidence: hasMedia ? 0.5 : 0.35,
       severity: dangerous ? 'HIGH' : 'LOW',
       difficulty: dangerous ? 'PROFESSIONAL' : 'EASY',

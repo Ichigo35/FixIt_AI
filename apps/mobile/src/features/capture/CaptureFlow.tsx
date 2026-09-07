@@ -9,6 +9,11 @@ import { Button, Card, Screen, Text } from '@/components';
 import { t } from '@/i18n';
 import { friendlyError } from '@/lib/errors';
 import { useTheme } from '@/theme';
+import {
+  EMPTY_EXTRA_DETAILS,
+  ExtraDetailsFields,
+  type ExtraDetails,
+} from '@/features/diagnosis/ExtraDetailsFields';
 import { AudioCapture } from './AudioCapture';
 import { CameraCapture } from './CameraCapture';
 import { VideoCapture } from './VideoCapture';
@@ -43,9 +48,11 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
   const isAudio = mode === 'audio';
   const [media, setMedia] = useState<PickedMedia | null>(null);
   const [description, setDescription] = useState('');
+  const [extra, setExtra] = useState<ExtraDetails>(EMPTY_EXTRA_DETAILS);
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const onExtraChange = useCallback((v: ExtraDetails) => setExtra(v), []);
 
   const openLibrary = useCallback(async () => {
     const picked = await pickFromLibrary(isVideo ? 'video' : 'image');
@@ -58,28 +65,54 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
 
   const audioNeedsMore = isAudio && description.trim().length < AUDIO_MIN_DESCRIPTION;
 
+  /** Paramètres communs de navigation vers /diagnosis/new (champs facultatifs omis si vides). */
+  const extraParams = (): Record<string, string> => {
+    const p: Record<string, string> = {};
+    if (extra.brand) p.brand = extra.brand;
+    if (extra.model) p.model = extra.model;
+    if (extra.serialNumber) p.serialNumber = extra.serialNumber;
+    if (extra.errorCode) p.errorCode = extra.errorCode;
+    if (extra.measurements) p.measurements = extra.measurements;
+    return p;
+  };
+
   const analyze = async () => {
     if (!media || audioNeedsMore) return;
     setStatus('uploading');
     setError(null);
+    const labelIds = extra.labelImageId ? [extra.labelImageId] : [];
     try {
       if (isVideo) {
         const upload = await uploadVideo(media.uri, media.mimeType);
         router.replace({
           pathname: '/diagnosis/new',
-          params: { videoIds: JSON.stringify([upload.id]), description: description.trim() },
+          params: {
+            videoIds: JSON.stringify([upload.id]),
+            imageIds: JSON.stringify(labelIds),
+            description: description.trim(),
+            ...extraParams(),
+          },
         });
       } else if (isAudio) {
         const upload = await uploadAudio(media.uri, media.mimeType);
         router.replace({
           pathname: '/diagnosis/new',
-          params: { audioIds: JSON.stringify([upload.id]), description: description.trim() },
+          params: {
+            audioIds: JSON.stringify([upload.id]),
+            imageIds: JSON.stringify(labelIds),
+            description: description.trim(),
+            ...extraParams(),
+          },
         });
       } else {
         const upload = await uploadImage(media.uri, 'problem', media.mimeType);
         router.replace({
           pathname: '/diagnosis/new',
-          params: { imageIds: JSON.stringify([upload.id]), description: description.trim() },
+          params: {
+            imageIds: JSON.stringify([upload.id, ...labelIds]),
+            description: description.trim(),
+            ...extraParams(),
+          },
         });
       }
     } catch (err) {
@@ -204,6 +237,8 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
             />
           </Card>
         </View>
+
+        <ExtraDetailsFields onChange={onExtraChange} />
 
         <Button
           label={t('capture.analyze')}

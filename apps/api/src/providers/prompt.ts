@@ -14,8 +14,11 @@ because a job is fiddly or time-consuming. Many common repairs (dripping taps, l
 furniture joints, clogged filters, worn seals) are reasonable DIY with the power/water
 turned off. Calibrate "severity" the same way.
 
-Do NOT invent brand/model numbers you cannot actually read. If you cannot identify the
-model, say so via "moreInfoNeeded".
+Do NOT invent brand/model numbers you cannot actually read. If a photo of a rating plate
+or model label is attached, transcribe the model / serial VERBATIM into "identifiedModel"
+(copy exactly as printed — do not correct, complete or guess; watch 0/O, 1/I, 8/B, 5/S) and
+set "identifiedModel.confident": true only if it is genuinely legible. If you cannot identify
+the model, leave it null and say so via "moreInfoNeeded".
 Do NOT invent prices. Only set a part's "priceKnown": true with numbers if you are
 genuinely confident; otherwise leave prices null and "priceKnown": false.
 
@@ -30,6 +33,19 @@ export function buildUserPrompt(input: DiagnoseInput): string {
   if (input.category) lines.push(`Category (user-selected): ${input.category}`);
   if (input.brand) lines.push(`Brand (user-provided): ${input.brand}`);
   if (input.model) lines.push(`Model (user-provided): ${input.model}`);
+  if (input.serialNumber) lines.push(`Serial number (user-provided): ${input.serialNumber}`);
+  if (input.errorCode) {
+    lines.push(
+      input.errorCodeInfo
+        ? `Reported fault code ${input.errorCode} — standard OBD-II meaning: "${input.errorCodeInfo}". Explain it in plain language, tie it to the described symptom, and don't just restate it.`
+        : `Reported fault/error code (as entered by the user): ${input.errorCode}. Interpret it for this brand/appliance if you can; if you are not sure what it means, say so via "moreInfoNeeded".`,
+    );
+  }
+  if (input.measurements?.trim()) {
+    lines.push(
+      `The user reports these measurements: "${input.measurements.trim()}". Use them in your reasoning. If a key measurement is missing to decide between causes, ask for it via "moreInfoNeeded".`,
+    );
+  }
   lines.push(
     input.description.trim()
       ? `User description: "${input.description.trim()}"`

@@ -22,6 +22,13 @@
       "when": 1788316065647,
       "tag": "0002_user_role",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788745769941,
+      "tag": "0003_add_error_code_measurements",
+      "breakpoints": true
     }
   ]
 }

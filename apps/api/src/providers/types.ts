@@ -23,6 +23,13 @@ export interface DiagnoseInput {
   category?: Category | null;
   brand?: string | null;
   model?: string | null;
+  serialNumber?: string | null;
+  /** Code d'erreur saisi par l'utilisateur (F21 / P0300 / CE-34878-0…). */
+  errorCode?: string | null;
+  /** Description OBD-II du code si `errorCode` est un DTC générique connu (injectée dans le prompt). */
+  errorCodeInfo?: string | null;
+  /** Mesures relevées par l'utilisateur, texte libre. */
+  measurements?: string | null;
   images: DiagnoseImage[];
   videos?: DiagnoseVideo[];
   audios?: DiagnoseAudio[];

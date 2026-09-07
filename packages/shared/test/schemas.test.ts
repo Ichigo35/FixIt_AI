@@ -91,7 +91,7 @@ describe('média : photos + vidéo', () => {
     ).not.toThrow();
   });
 
-  it('diagnosisResultSchema.input.audioIds défaut []', () => {
+  it('diagnosisResultSchema.input : audioIds / serialNumber / errorCode / measurements par défaut', () => {
     const base = {
       id: '11111111-1111-1111-1111-111111111111',
       createdAt: new Date().toISOString(),
@@ -101,7 +101,23 @@ describe('média : photos + vidéo', () => {
       safety: { riskLevel: 'LOW', recommendation: 'DIY', forcedStop: false, reasons: [] },
       repairability: { score: 80, label: 'Easy DIY repair' },
     };
-    expect(diagnosisResultSchema.parse(base).input.audioIds).toEqual([]);
+    const parsed = diagnosisResultSchema.parse(base).input;
+    expect(parsed.audioIds).toEqual([]);
+    expect(parsed.serialNumber).toBeNull();
+    expect(parsed.errorCode).toBeNull();
+    expect(parsed.measurements).toBeNull();
+  });
+
+  it('createDiagnosisRequestSchema accepte errorCode / measurements / serialNumber', () => {
+    const r = createDiagnosisRequestSchema.parse({
+      errorCode: 'P0300',
+      measurements: '12.4 V',
+      serialNumber: 'SN123',
+    });
+    expect(r.errorCode).toBe('P0300');
+    expect(r.measurements).toBe('12.4 V');
+    expect(r.serialNumber).toBe('SN123');
+    expect(() => createDiagnosisRequestSchema.parse({ errorCode: 'x'.repeat(41) })).toThrow();
   });
 });
 

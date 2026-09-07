@@ -35,6 +35,10 @@ export const diagnoses = pgTable(
     brand: text('brand'),
     model: text('model'),
     serialNumber: text('serial_number'),
+    /** Code d'erreur saisi par l'utilisateur (F21 / P0300 / CE-34878-0…). */
+    errorCode: text('error_code'),
+    /** Mesures relevées par l'utilisateur (texte libre). */
+    measurements: text('measurements'),
     userDescription: text('user_description').notNull().default(''),
     problem: text('problem').notNull(),
     confidence: real('confidence').notNull(),

@@ -32,6 +32,11 @@ export function RefineDiagnosis({ result }: { result: DiagnosisResult }) {
       params: {
         description,
         ...(result.category ? { category: result.category } : {}),
+        ...(result.input.brand ? { brand: result.input.brand } : {}),
+        ...(result.input.model ? { model: result.input.model } : {}),
+        ...(result.input.serialNumber ? { serialNumber: result.input.serialNumber } : {}),
+        ...(result.input.errorCode ? { errorCode: result.input.errorCode } : {}),
+        ...(result.input.measurements ? { measurements: result.input.measurements } : {}),
         imageIds: JSON.stringify(result.input.imageIds),
         videoIds: JSON.stringify(result.input.videoIds ?? []),
         audioIds: JSON.stringify(result.input.audioIds ?? []),

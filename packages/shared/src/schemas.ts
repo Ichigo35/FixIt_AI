@@ -297,6 +297,10 @@ export const createDiagnosisRequestSchema = z.object({
   brand: z.string().max(120).nullable().optional(),
   model: z.string().max(120).nullable().optional(),
   serialNumber: z.string().max(120).nullable().optional(),
+  /** Code d'erreur affiché par l'appareil / lu à l'OBD-II (« F21 », « P0300 », « CE-34878-0 »). */
+  errorCode: z.string().max(40).nullable().optional(),
+  /** Mesures relevées par l'utilisateur (tension, résistance, pression, température…), texte libre. */
+  measurements: z.string().max(600).nullable().optional(),
   imageIds: z.array(z.string().uuid()).max(6).default([]),
   videoIds: z.array(z.string().uuid()).max(1).default([]),
   audioIds: z.array(z.string().uuid()).max(1).default([]),
@@ -392,6 +396,9 @@ export const diagnosisResultSchema = z.object({
     description: z.string(),
     brand: z.string().nullable(),
     model: z.string().nullable(),
+    serialNumber: z.string().nullable().default(null),
+    errorCode: z.string().nullable().default(null),
+    measurements: z.string().nullable().default(null),
     imageIds: z.array(z.string()),
     videoIds: z.array(z.string()).default([]),
     audioIds: z.array(z.string()).default([]),

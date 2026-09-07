@@ -71,11 +71,14 @@ export function DiagnosisResultView({ result }: { result: DiagnosisResult }) {
         </Card>
       </FadeInView>
 
-      {result.input.imageIds.length > 0 || result.input.videoIds.length > 0 ? (
+      {result.input.imageIds.length > 0 ||
+      result.input.videoIds.length > 0 ||
+      (result.input.audioIds?.length ?? 0) > 0 ? (
         <FadeInView delay={50}>
           <DiagnosisMedia
             imageIds={result.input.imageIds}
             videoIds={result.input.videoIds}
+            audioIds={result.input.audioIds ?? []}
           />
         </FadeInView>
       ) : null}

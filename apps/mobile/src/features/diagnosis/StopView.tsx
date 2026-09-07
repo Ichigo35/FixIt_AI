@@ -52,8 +52,14 @@ export function StopView({ result }: { result: DiagnosisResult }) {
         <Text variant="heading">{result.diagnosis.problem}</Text>
       </Card>
 
-      {result.input.imageIds.length > 0 || result.input.videoIds.length > 0 ? (
-        <DiagnosisMedia imageIds={result.input.imageIds} videoIds={result.input.videoIds} />
+      {result.input.imageIds.length > 0 ||
+      result.input.videoIds.length > 0 ||
+      (result.input.audioIds?.length ?? 0) > 0 ? (
+        <DiagnosisMedia
+          imageIds={result.input.imageIds}
+          videoIds={result.input.videoIds}
+          audioIds={result.input.audioIds ?? []}
+        />
       ) : null}
 
       {result.safety.reasons.length > 0 ? (

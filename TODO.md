@@ -133,6 +133,21 @@ Diagnostic à partir d'un **court clip** (~15 s) — mouvement + son + pannes in
 - ✅ **Worker redéployé** (2026-09-02, version `cf8bf14e`, `/health` OK).
 - ⏳ **Reste** : tester la File API réelle sur device ; miniature vidéo dans la preview et « My Repairs » ; extraction de durée côté mobile ; lecture de la vidéo dans le détail d'un diagnostic ; i18n `CaptureFlow`.
 
+---
+
+## PHASE 11 — AUDIO 🚧 (2026-09-07)
+
+Diagnostic à partir d'un **court clip audio** (~30 s) + une **description obligatoire** — le bruit d'une panne (voiture, électroménager, PC…). Miroir de la PHASE 9 (vidéo).
+
+- ✅ **Shared** : `AUDIO_CONTENT_TYPES` (`audio/mp4|mpeg|aac|wav|ogg`), ajoutés à `MEDIA_CONTENT_TYPES` ; `UPLOAD_KINDS` (+`audio`) ; `MAX_AUDIO_BYTES` (15 Mo), `MAX_AUDIO_DURATION_SECONDS` (30). `media.ts` : alias (`audio/m4a`→`audio/mp4`…), extensions (`m4a/aac/mp3/wav/ogg`), `isAudioContentType`, `resolveAudioContentType`. `createDiagnosisRequestSchema.audioIds` (max 1), `diagnosisResultSchema.input.audioIds`.
+- ✅ **`POST /uploads`** : sélection à trois voies `kind`/`maxBytes` (video / audio / image) via `isAudioType`.
+- ✅ **`POST /diagnoses`** : `diagnosisFingerprint` inclut `audioIds` (dédup correcte) ; garde `need_description_for_audio` (clip sans description ⇒ 400) ; boucle média + branche `isAudio` → `provider.diagnose({ …, audios })` ; `result.input.audioIds` ; `db/repos.ts` split par `kind` (`audioIds`). **Aucune migration** (`diagnosis_images.kind` texte libre).
+- ✅ **Provider Gemini** : `DiagnoseAudio` + `DiagnoseInput.audios` ; clip court ⇒ part `inline_data` base64 (comme les images), repli API Files (`uploadAndWaitFile`, ex-`uploadAndWaitVideo`) au-delà de ~18 Mo. `MockProvider` gère `audios`. Prompt : bloc « listen for grinding/clicking/humming… + WHEN it happens ».
+- ✅ **Mobile** : dép. native **`expo-audio ~57.0.4`** + plugin `app.config.ts` ; `AudioCapture.tsx` (`useAudioRecorder`/`useAudioRecorderState`, perms, cap 30 s, bouton record/stop) ; `uploads.ts` `uploadAudio` + `audioSource` (retag `Blob.slice()`) ; `CaptureFlow` mode `audio` (**description ≥ 8 car. obligatoire**) ; `app/capture.tsx` + `app/diagnosis/new.tsx` (`audioIds`, `analyzingAudio`) ; `DiagnosisMedia` tuile 🎙️ + `AudioPlayerBox` (`useAudioPlayer`) ; `RefineDiagnosis` propage `audioIds` ; action d'accueil « Enregistrer un son » ; i18n FR/EN (`capture.*`, `media.audio/playAudio`, `home.actionAudio*`).
+- ✅ **Helper pur** `src/features/capture/audioMeta.ts` (`formatClock`, `isUsableClip`) + test.
+- ✅ **177 tests** (72 shared + 58 api + 47 mobile ; +2 api « live » opt-in), `pnpm -r typecheck` + `pnpm lint` verts.
+- ⏳ **Reste** : `expo prebuild` + **rebuild APK** (nouveau module natif) ; **vérif sur device** (OPPO CPH2799) : enregistrer un bruit → diagnostic → relecture dans « My Repairs » + `wrangler tail --format json` (upload `audio/*`, part inline envoyée) ; déployer le Worker ; test « live » Gemini audio opt-in (`GEMINI_LIVE_AUDIO`).
+
 ## PHASE 10 — POLISH ✅ (1re passe)
 
 - ✅ **Gestion d'erreurs centralisée** : `src/lib/errors.ts` (`friendlyError(err, context)` + `isRetryable`), pur, remplace les ternaires dupliquées dans `diagnosis/new`, `diagnosis/[id]`, `repair/[id]`, `history`, `CaptureFlow`, `auth`. `ApiError` extrait dans `src/api/ApiError.ts` (testable hors Expo).

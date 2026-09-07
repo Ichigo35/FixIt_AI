@@ -25,7 +25,10 @@ export class MockProvider implements AIProvider {
     // pour que le SafetyClassifier ait de quoi travailler dans les tests.
     const dangerous = /(mains|gas|voltage|battery|electric|câble|cable|fuel|brake)/.test(text);
 
-    const hasMedia = input.images.length > 0 || (input.videos?.length ?? 0) > 0;
+    const hasMedia =
+      input.images.length > 0 ||
+      (input.videos?.length ?? 0) > 0 ||
+      (input.audios?.length ?? 0) > 0;
 
     return coerceRawDiagnosis({
       problem: dangerous

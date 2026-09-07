@@ -16,6 +16,7 @@
   "dependencies": {
     "@fixit/shared": "workspace:*",
     "expo": "~57.0.18",
+    "expo-audio": "~57.0.4",
     "expo-camera": "~57.0.4",
     "expo-constants": "~57.0.16",
     "expo-crypto": "~57.0.2",

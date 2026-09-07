@@ -71,6 +71,13 @@ const config: ExpoConfig = {
     'expo-localization',
     'expo-web-browser',
     'expo-video',
+    [
+      'expo-audio',
+      {
+        microphonePermission:
+          'FixIt AI uses the microphone so you can record the sound of the problem (a noise, a rattle, a click) for the diagnosis.',
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

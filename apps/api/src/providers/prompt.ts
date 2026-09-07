@@ -45,6 +45,11 @@ export function buildUserPrompt(input: DiagnoseInput): string {
       'A short video is attached — watch it for movement, sound cues, vibration, sparks, smoke, leaks or intermittent faults that a still photo would miss. Note the timestamp of anything relevant.',
     );
   }
+  if ((input.audios?.length ?? 0) > 0) {
+    lines.push(
+      'An audio recording is attached — listen for grinding, clicking, ticking, humming, buzzing, whining, rattling, hissing, knocking, squealing or intermittent noises. Describe the sound in plain words and say WHEN it happens (at start-up, under load, when accelerating / braking / turning, at idle, only when cold/hot). Match the noise to a likely mechanical or electrical cause.',
+    );
+  }
   lines.push(
     'Give the most likely problem, a confidence 0..1, possible causes, difficulty, tools, parts, time and cost estimates, and a clear recommendation.',
   );

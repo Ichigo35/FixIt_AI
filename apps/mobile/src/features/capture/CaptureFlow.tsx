@@ -4,16 +4,20 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TextInput, View, type ScrollView } from 'react-native';
 import { MAX_VIDEO_DURATION_SECONDS } from '@fixit/shared';
-import { uploadImage, uploadVideo } from '@/api/uploads';
+import { uploadAudio, uploadImage, uploadVideo } from '@/api/uploads';
 import { Button, Card, Screen, Text } from '@/components';
 import { t } from '@/i18n';
 import { friendlyError } from '@/lib/errors';
 import { useTheme } from '@/theme';
+import { AudioCapture } from './AudioCapture';
 import { CameraCapture } from './CameraCapture';
 import { VideoCapture } from './VideoCapture';
 
-type Mode = 'camera' | 'library' | 'video';
+type Mode = 'camera' | 'library' | 'video' | 'audio';
 type Status = 'idle' | 'uploading' | 'error';
+
+/** Nombre minimal de caractères de description exigé quand le média est un clip audio. */
+const AUDIO_MIN_DESCRIPTION = 8;
 
 interface PickedMedia {
   uri: string;
@@ -36,6 +40,7 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
   const theme = useTheme();
   const router = useRouter();
   const isVideo = mode === 'video';
+  const isAudio = mode === 'audio';
   const [media, setMedia] = useState<PickedMedia | null>(null);
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<Status>('idle');
@@ -51,8 +56,10 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
     if (mode === 'library' && !media) void openLibrary();
   }, [mode, media, openLibrary]);
 
+  const audioNeedsMore = isAudio && description.trim().length < AUDIO_MIN_DESCRIPTION;
+
   const analyze = async () => {
-    if (!media) return;
+    if (!media || audioNeedsMore) return;
     setStatus('uploading');
     setError(null);
     try {
@@ -61,6 +68,12 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
         router.replace({
           pathname: '/diagnosis/new',
           params: { videoIds: JSON.stringify([upload.id]), description: description.trim() },
+        });
+      } else if (isAudio) {
+        const upload = await uploadAudio(media.uri, media.mimeType);
+        router.replace({
+          pathname: '/diagnosis/new',
+          params: { audioIds: JSON.stringify([upload.id]), description: description.trim() },
         });
       } else {
         const upload = await uploadImage(media.uri, 'problem', media.mimeType);
@@ -101,6 +114,15 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
         </Screen>
       );
     }
+    if (mode === 'audio') {
+      return (
+        <Screen>
+          <View style={{ flex: 1 }}>
+            <AudioCapture onRecorded={(uri) => setMedia({ uri })} />
+          </View>
+        </Screen>
+      );
+    }
     return (
       <Screen scroll>
         <Card>
@@ -116,14 +138,16 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
   return (
     <Screen scroll keyboardAware scrollRef={scrollRef}>
       <View style={{ gap: theme.spacing.lg }}>
-        {isVideo ? (
+        {isVideo || isAudio ? (
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-              <Text style={{ fontSize: 26 }}>🎬</Text>
+              <Text style={{ fontSize: 26 }}>{isAudio ? '🎙️' : '🎬'}</Text>
               <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="heading">{t('capture.videoReady')}</Text>
+                <Text variant="heading">
+                  {isAudio ? t('capture.audioReady') : t('capture.videoReady')}
+                </Text>
                 <Text variant="caption" muted>
-                  {t('capture.videoReadySub')}
+                  {isAudio ? t('capture.audioReadySub') : t('capture.videoReadySub')}
                 </Text>
               </View>
             </View>
@@ -139,11 +163,13 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           <Button
             label={
-              isVideo
-                ? t('capture.recordAgain')
-                : mode === 'camera'
-                  ? t('capture.retake')
-                  : t('capture.chooseAnother')
+              isAudio
+                ? t('capture.recordAudioAgain')
+                : isVideo
+                  ? t('capture.recordAgain')
+                  : mode === 'camera'
+                    ? t('capture.retake')
+                    : t('capture.chooseAnother')
             }
             variant="secondary"
             onPress={() => {
@@ -162,9 +188,11 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
               onChangeText={setDescription}
               multiline
               placeholder={
-                isVideo
-                  ? t('capture.descPlaceholderVideo')
-                  : t('capture.descPlaceholderPhoto')
+                isAudio
+                  ? t('capture.descPlaceholderAudio')
+                  : isVideo
+                    ? t('capture.descPlaceholderVideo')
+                    : t('capture.descPlaceholderPhoto')
               }
               placeholderTextColor={theme.colors.textMuted}
               style={{
@@ -181,8 +209,15 @@ export function CaptureFlow({ mode }: { mode: Mode }) {
           label={t('capture.analyze')}
           icon="🔍"
           loading={status === 'uploading'}
+          disabled={audioNeedsMore}
           onPress={analyze}
         />
+
+        {audioNeedsMore ? (
+          <Text variant="caption" muted center>
+            {t('capture.audioNeedsDescription')}
+          </Text>
+        ) : null}
 
         {error ? (
           <Text variant="caption" color={theme.colors.danger} center>

@@ -34,6 +34,7 @@ export function RefineDiagnosis({ result }: { result: DiagnosisResult }) {
         ...(result.category ? { category: result.category } : {}),
         imageIds: JSON.stringify(result.input.imageIds),
         videoIds: JSON.stringify(result.input.videoIds ?? []),
+        audioIds: JSON.stringify(result.input.audioIds ?? []),
       },
     });
   };

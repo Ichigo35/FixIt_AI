@@ -44,6 +44,13 @@ const ACTIONS: Action[] = [
     route: '/capture',
     params: { mode: 'video' },
   },
+  {
+    icon: '🎙️',
+    title: t('home.actionAudioTitle'),
+    subtitle: t('home.actionAudioSub'),
+    route: '/capture',
+    params: { mode: 'audio' },
+  },
 ];
 
 export default function HomeScreen() {

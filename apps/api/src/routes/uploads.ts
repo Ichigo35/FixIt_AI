@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import {
+  AUDIO_CONTENT_TYPES,
+  MAX_AUDIO_BYTES,
   MAX_UPLOAD_BYTES,
   MAX_VIDEO_BYTES,
   MEDIA_CONTENT_TYPES,
@@ -15,6 +17,7 @@ import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
 
 const VIDEO_TYPES = new Set<string>(VIDEO_CONTENT_TYPES);
+const AUDIO_TYPES = new Set<string>(AUDIO_CONTENT_TYPES);
 const KINDS = new Set<string>(UPLOAD_KINDS);
 
 /** Clé d'objet plate ; l'appartenance est vérifiée via `metadata.userid`. */
@@ -33,9 +36,11 @@ uploads.post('/', rateLimit('UPLOAD_RL'), async (c) => {
   }
 
   const isVideo = VIDEO_TYPES.has(contentType);
-  const kindParam = c.req.query('kind') ?? (isVideo ? 'video' : 'problem');
+  const isAudio = AUDIO_TYPES.has(contentType);
+  const defaultKind = isVideo ? 'video' : isAudio ? 'audio' : 'problem';
+  const kindParam = c.req.query('kind') ?? defaultKind;
   const kind: UploadKind = KINDS.has(kindParam) ? (kindParam as UploadKind) : 'problem';
-  const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_UPLOAD_BYTES;
+  const maxBytes = isVideo ? MAX_VIDEO_BYTES : isAudio ? MAX_AUDIO_BYTES : MAX_UPLOAD_BYTES;
 
   const body = await c.req.arrayBuffer();
   if (body.byteLength === 0) return c.json({ error: 'empty_body' }, 400);

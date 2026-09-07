@@ -65,8 +65,8 @@ export type DiagnosisStatus = (typeof DIAGNOSIS_STATUSES)[number];
 export const IMAGE_KINDS = ['problem', 'label', 'before', 'after', 'step'] as const;
 export type ImageKind = (typeof IMAGE_KINDS)[number];
 
-/** Types de « kind » acceptés par `POST /uploads` : les photos + une courte vidéo. */
-export const UPLOAD_KINDS = [...IMAGE_KINDS, 'video'] as const;
+/** Types de « kind » acceptés par `POST /uploads` : les photos + une courte vidéo + un court clip audio. */
+export const UPLOAD_KINDS = [...IMAGE_KINDS, 'video', 'audio'] as const;
 export type UploadKind = (typeof UPLOAD_KINDS)[number];
 
 export const FREE_MONTHLY_DIAGNOSES = 3;

@@ -44,6 +44,7 @@ export interface CreateDiagnosisInput {
   model?: string | null;
   imageIds?: string[];
   videoIds?: string[];
+  audioIds?: string[];
 }
 
 export function createDiagnosis(input: CreateDiagnosisInput): Promise<DiagnosisResponse> {
@@ -54,6 +55,7 @@ export function createDiagnosis(input: CreateDiagnosisInput): Promise<DiagnosisR
     model: input.model ?? null,
     imageIds: input.imageIds ?? [],
     videoIds: input.videoIds ?? [],
+    audioIds: input.audioIds ?? [],
   });
 }
 

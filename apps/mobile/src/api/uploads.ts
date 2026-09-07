@@ -1,7 +1,9 @@
 import { Image } from 'react-native';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import {
+  MAX_AUDIO_BYTES,
   MAX_VIDEO_BYTES,
+  resolveAudioContentType,
   resolveImageContentType,
   resolveVideoContentType,
   type UploadKind,
@@ -41,6 +43,15 @@ export function videoSource(videoId: string) {
   const token = authBridge.getAccessToken();
   return {
     uri: `${config.apiBaseUrl}/uploads/${videoId}`,
+    headers: token ? { authorization: `Bearer ${token}` } : undefined,
+  };
+}
+
+/** Source audio authentifiée pour `expo-audio` (`useAudioPlayer` accepte `headers`). */
+export function audioSource(audioId: string) {
+  const token = authBridge.getAccessToken();
+  return {
+    uri: `${config.apiBaseUrl}/uploads/${audioId}`,
     headers: token ? { authorization: `Bearer ${token}` } : undefined,
   };
 }
@@ -131,4 +142,17 @@ export async function uploadVideo(uri: string, mimeHint?: string | null): Promis
   }
   const contentType = resolveVideoContentType([mimeHint, blob.type, uri]);
   return apiPostBinary<UploadResult>('/uploads?kind=video', retag(blob, contentType), contentType);
+}
+
+/** Envoie un court clip audio de diagnostic. Rejette tôt si le fichier dépasse la limite serveur. */
+export async function uploadAudio(uri: string, mimeHint?: string | null): Promise<UploadResult> {
+  const fileRes = await fetch(uri);
+  const blob = await fileRes.blob();
+  if (blob.size > MAX_AUDIO_BYTES) {
+    throw new ApiError(413, 'payload_too_large');
+  }
+  const contentType = resolveAudioContentType([mimeHint, blob.type, uri]);
+  // `retag()` : sur les deux plateformes le pont natif RN lit le type interne du
+  // Blob (souvent `audio/x-m4a` ou vide) et écrase notre header — voir le commentaire de `retag`.
+  return apiPostBinary<UploadResult>('/uploads?kind=audio', retag(blob, contentType), contentType);
 }

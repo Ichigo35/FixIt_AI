@@ -12,6 +12,12 @@ export interface DiagnoseVideo {
   data: ArrayBuffer;
 }
 
+export interface DiagnoseAudio {
+  contentType: string;
+  /** octets bruts du clip audio (court, ~30 s) */
+  data: ArrayBuffer;
+}
+
 export interface DiagnoseInput {
   description: string;
   category?: Category | null;
@@ -19,6 +25,7 @@ export interface DiagnoseInput {
   model?: string | null;
   images: DiagnoseImage[];
   videos?: DiagnoseVideo[];
+  audios?: DiagnoseAudio[];
 }
 
 export interface RepairGuideInput {

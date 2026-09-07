@@ -299,6 +299,7 @@ export const createDiagnosisRequestSchema = z.object({
   serialNumber: z.string().max(120).nullable().optional(),
   imageIds: z.array(z.string().uuid()).max(6).default([]),
   videoIds: z.array(z.string().uuid()).max(1).default([]),
+  audioIds: z.array(z.string().uuid()).max(1).default([]),
 });
 export type CreateDiagnosisRequest = z.infer<typeof createDiagnosisRequestSchema>;
 
@@ -308,8 +309,26 @@ export type UploadContentType = (typeof UPLOAD_CONTENT_TYPES)[number];
 export const VIDEO_CONTENT_TYPES = ['video/mp4', 'video/quicktime'] as const;
 export type VideoContentType = (typeof VIDEO_CONTENT_TYPES)[number];
 
-/** Photos + vidéo : tout ce que `POST /uploads` sait relayer. */
-export const MEDIA_CONTENT_TYPES = [...UPLOAD_CONTENT_TYPES, ...VIDEO_CONTENT_TYPES] as const;
+/**
+ * Types audio acceptés pour un clip de diagnostic. `expo-audio` produit du
+ * `.m4a`/AAC sur Android et iOS (canonique `audio/mp4` ici — voir `media.ts`).
+ * Gemini accepte tous ces types nativement dans `generateContent`.
+ */
+export const AUDIO_CONTENT_TYPES = [
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/aac',
+  'audio/wav',
+  'audio/ogg',
+] as const;
+export type AudioContentType = (typeof AUDIO_CONTENT_TYPES)[number];
+
+/** Photos + vidéo + audio : tout ce que `POST /uploads` sait relayer. */
+export const MEDIA_CONTENT_TYPES = [
+  ...UPLOAD_CONTENT_TYPES,
+  ...VIDEO_CONTENT_TYPES,
+  ...AUDIO_CONTENT_TYPES,
+] as const;
 export type MediaContentType = (typeof MEDIA_CONTENT_TYPES)[number];
 
 /** Taille maximale acceptée par `POST /uploads` pour une photo (octets). */
@@ -318,6 +337,10 @@ export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 40 * 1024 * 1024;
 /** Durée cible d'une vidéo de diagnostic (le mobile coupe l'enregistrement à cette valeur). */
 export const MAX_VIDEO_DURATION_SECONDS = 15;
+/** Taille maximale acceptée pour un clip audio de diagnostic (octets). Un clip AAC ~30 s ≈ 0,5 Mo. */
+export const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
+/** Durée cible d'un clip audio (le mobile coupe l'enregistrement à cette valeur). */
+export const MAX_AUDIO_DURATION_SECONDS = 30;
 
 export const REPAIR_OUTCOMES = ['fixed', 'not_fixed', 'pro'] as const;
 export type RepairOutcome = (typeof REPAIR_OUTCOMES)[number];
@@ -371,6 +394,7 @@ export const diagnosisResultSchema = z.object({
     model: z.string().nullable(),
     imageIds: z.array(z.string()),
     videoIds: z.array(z.string()).default([]),
+    audioIds: z.array(z.string()).default([]),
   }),
   diagnosis: rawDiagnosisSchema,
   safety: safetyResultSchema,

@@ -30,6 +30,7 @@ export default function NewDiagnosisScreen() {
     category?: string;
     imageIds?: string;
     videoIds?: string;
+    audioIds?: string;
   }>();
   const [state, setState] = useState<State>({ phase: 'loading' });
   const started = useRef(false);
@@ -42,6 +43,7 @@ export default function NewDiagnosisScreen() {
         category: (params.category as Category | undefined) ?? null,
         imageIds: parseIds(params.imageIds),
         videoIds: parseIds(params.videoIds),
+        audioIds: parseIds(params.audioIds),
       });
       // Le retour haptique du STOP est géré par StopView.
       if (!result.safety.forcedStop) haptics.success();
@@ -54,7 +56,7 @@ export default function NewDiagnosisScreen() {
         canRetry: isRetryable(err),
       });
     }
-  }, [params.description, params.category, params.imageIds, params.videoIds]);
+  }, [params.description, params.category, params.imageIds, params.videoIds, params.audioIds]);
 
   useEffect(() => {
     if (started.current) return;
@@ -70,7 +72,9 @@ export default function NewDiagnosisScreen() {
           detail={
             parseIds(params.videoIds).length > 0
               ? t('capture.analyzingVideo')
-              : t('capture.analyzingPhoto')
+              : parseIds(params.audioIds).length > 0
+                ? t('capture.analyzingAudio')
+                : t('capture.analyzingPhoto')
           }
         />
       </Screen>

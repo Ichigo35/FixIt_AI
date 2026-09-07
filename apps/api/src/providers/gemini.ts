@@ -28,6 +28,13 @@ import {
 /** Repos court après un 503 « high demand » : la saturation est passagère. */
 const OVERLOAD_COOLDOWN_MS = 20_000;
 
+/**
+ * Au-delà de ce seuil, un média part par l'API Files plutôt qu'en base64 inline
+ * (la requête `generateContent` totale est plafonnée à ~20 Mo par Gemini). Un
+ * clip audio de diagnostic (~30 s AAC ≈ 0,5 Mo) reste toujours inline en pratique.
+ */
+const INLINE_MEDIA_MAX_BYTES = 18 * 1024 * 1024;
+
 const API_HOST = 'https://generativelanguage.googleapis.com';
 const API_ROOT = `${API_HOST}/v1beta/models`;
 const FILES_UPLOAD = `${API_HOST}/upload/v1beta/files`;
@@ -107,9 +114,20 @@ export class GeminiProvider implements AIProvider {
     // Les vidéos passent par l'API Files (trop lourdes pour l'inline base64).
     const uploaded: string[] = [];
     for (const video of input.videos ?? []) {
-      const file = await this.uploadAndWaitVideo(video.data, video.contentType);
+      const file = await this.uploadAndWaitFile(video.data, video.contentType, 'diagnosis-clip');
       uploaded.push(file.name);
       parts.push({ file_data: { mime_type: file.mimeType ?? video.contentType, file_uri: file.uri } });
+    }
+    // Les clips audio sont courts : inline base64 comme les images. Repli API
+    // Files seulement si un clip dépasse le plafond de requête inline.
+    for (const audio of input.audios ?? []) {
+      if (audio.data.byteLength <= INLINE_MEDIA_MAX_BYTES) {
+        parts.push({ inline_data: { mime_type: audio.contentType, data: toBase64(audio.data) } });
+      } else {
+        const file = await this.uploadAndWaitFile(audio.data, audio.contentType, 'diagnosis-audio');
+        uploaded.push(file.name);
+        parts.push({ file_data: { mime_type: file.mimeType ?? audio.contentType, file_uri: file.uri } });
+      }
     }
     try {
       return await this.structured(SYSTEM_PROMPT, GEMINI_RESPONSE_SCHEMA, parts, coerceRawDiagnosis);
@@ -120,10 +138,15 @@ export class GeminiProvider implements AIProvider {
   }
 
   /**
-   * Upload d'une vidéo via l'API Files (protocole resumable documenté) puis attente
-   * de l'état ACTIVE. 1) start -> renvoie une upload URL ; 2) upload+finalize -> renvoie le File.
+   * Upload d'un média (vidéo ou gros clip audio) via l'API Files (protocole resumable
+   * documenté) puis attente de l'état ACTIVE. 1) start -> renvoie une upload URL ;
+   * 2) upload+finalize -> renvoie le File.
    */
-  private async uploadAndWaitVideo(data: ArrayBuffer, contentType: string): Promise<GeminiFile> {
+  private async uploadAndWaitFile(
+    data: ArrayBuffer,
+    contentType: string,
+    displayName: string,
+  ): Promise<GeminiFile> {
     const numBytes = data.byteLength;
 
     let start: Response;
@@ -138,7 +161,7 @@ export class GeminiProvider implements AIProvider {
           'X-Goog-Upload-Header-Content-Type': contentType,
           'content-type': 'application/json',
         },
-        body: JSON.stringify({ file: { display_name: 'diagnosis-clip' } }),
+        body: JSON.stringify({ file: { display_name: displayName } }),
       });
     } catch (err) {
       throw new AIProviderError('ai_request_failed', `Network error starting Gemini upload: ${String(err)}`);
@@ -171,7 +194,7 @@ export class GeminiProvider implements AIProvider {
         body: data,
       });
     } catch (err) {
-      throw new AIProviderError('ai_request_failed', `Network error uploading video to Gemini: ${String(err)}`);
+      throw new AIProviderError('ai_request_failed', `Network error uploading media to Gemini: ${String(err)}`);
     }
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
@@ -182,17 +205,17 @@ export class GeminiProvider implements AIProvider {
       throw new AIProviderError('ai_bad_output', 'Gemini file upload returned no file reference');
     }
 
-    // Polling : une vidéo courte est traitée en quelques secondes.
+    // Polling : un média court est traité en quelques secondes.
     let current = file;
     for (let i = 0; i < 20 && current.state !== 'ACTIVE'; i++) {
       if (current.state === 'FAILED') {
-        throw new AIProviderError('ai_request_failed', 'Gemini failed to process the video');
+        throw new AIProviderError('ai_request_failed', 'Gemini failed to process the media file');
       }
       await new Promise((r) => setTimeout(r, 1500));
       current = await this.getFile(file.name);
     }
     if (current.state !== 'ACTIVE') {
-      throw new AIProviderError('ai_request_failed', 'Gemini video processing timed out');
+      throw new AIProviderError('ai_request_failed', 'Gemini media processing timed out');
     }
     return current;
   }

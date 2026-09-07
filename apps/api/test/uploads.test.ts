@@ -4,6 +4,7 @@ import { baseEnv, devAuth, memoryStorage } from './helpers';
 
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 const mp4 = new Uint8Array([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]);
+const m4a = new Uint8Array([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20]);
 const uid = 'test-uploads';
 
 function env(extra: object = {}) {
@@ -50,6 +51,35 @@ describe('POST /uploads', () => {
     expect(body.contentType).toBe('video/mp4');
     const stored = (e.STORAGE as ReturnType<typeof memoryStorage>)._store.get(`uploads/${body.id}`);
     expect(stored?.metadata.kind).toBe('video');
+  });
+
+  it('stocke un clip audio avec kind=audio (défaut d\'après le type MIME)', async () => {
+    const e = env();
+    const app = createApp();
+    const res = await app.request(
+      '/uploads',
+      { method: 'POST', headers: { 'content-type': 'audio/mp4', ...devAuth(uid) }, body: m4a },
+      e,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; kind: string; contentType: string };
+    expect(body.kind).toBe('audio');
+    expect(body.contentType).toBe('audio/mp4');
+    const stored = (e.STORAGE as ReturnType<typeof memoryStorage>)._store.get(`uploads/${body.id}`);
+    expect(stored?.metadata.kind).toBe('audio');
+  });
+
+  it('ramène audio/m4a au type canonique audio/mp4', async () => {
+    const e = env();
+    const app = createApp();
+    const res = await app.request(
+      '/uploads?kind=audio',
+      { method: 'POST', headers: { 'content-type': 'audio/m4a', ...devAuth(uid) }, body: m4a },
+      e,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { contentType: string };
+    expect(body.contentType).toBe('audio/mp4');
   });
 
   it('accepte image/jpg (variante Android) et stocke image/jpeg canonique', async () => {

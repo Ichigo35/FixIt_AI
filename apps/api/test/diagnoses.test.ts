@@ -361,6 +361,67 @@ describe.runIf(hasDb)('POST /diagnoses (mock + Neon)', () => {
     expect(store.has(`uploads/${up.id}`)).toBe(false);
   });
 
+  it('avec audio : upload puis diagnostic, audioIds persistés et purgés au delete', async () => {
+    const uid = freshUser();
+    const e = env();
+    const store = (e.STORAGE as ReturnType<typeof memoryStorage>)._store;
+    const app = createApp();
+
+    const m4a = new Uint8Array([
+      0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20,
+    ]);
+    const up = (await (
+      await app.request(
+        '/uploads',
+        { method: 'POST', headers: { 'content-type': 'audio/mp4', ...devAuth(uid) }, body: m4a },
+        e,
+      )
+    ).json()) as { id: string; kind: string };
+    expect(up.kind).toBe('audio');
+
+    const res = await post(
+      app,
+      { description: 'a metallic clicking noise from the engine at idle', audioIds: [up.id] },
+      e,
+      uid,
+    );
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as Record<string, any>;
+    expect(body.input.audioIds).toEqual([up.id]);
+
+    const detail = (await (
+      await app.request(`/diagnoses/${body.id}`, { headers: devAuth(uid) }, e)
+    ).json()) as Record<string, any>;
+    expect(detail.input.audioIds).toEqual([up.id]);
+    expect(detail.input.imageIds).toEqual([]);
+
+    const del = await app.request(`/diagnoses/${body.id}`, { method: 'DELETE', headers: devAuth(uid) }, e);
+    expect(del.status).toBe(204);
+    expect(store.has(`uploads/${up.id}`)).toBe(false);
+  });
+
+  it('refuse un clip audio sans description (400 need_description_for_audio)', async () => {
+    const uid = freshUser();
+    const e = env();
+    const app = createApp();
+
+    const m4a = new Uint8Array([
+      0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41, 0x20,
+    ]);
+    const up = (await (
+      await app.request(
+        '/uploads',
+        { method: 'POST', headers: { 'content-type': 'audio/mp4', ...devAuth(uid) }, body: m4a },
+        e,
+      )
+    ).json()) as { id: string };
+
+    const res = await post(app, { audioIds: [up.id] }, e, uid);
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe('need_description_for_audio');
+  });
+
   it('DELETE /diagnoses/:id purge aussi l\'image liée du stockage objet', async () => {
     const uid = freshUser();
     const e = env();

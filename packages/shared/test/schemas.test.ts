@@ -3,6 +3,8 @@ import {
   coerceRawDiagnosis,
   coerceRepairGuide,
   createDiagnosisRequestSchema,
+  diagnosisResultSchema,
+  MEDIA_CONTENT_TYPES,
   rawDiagnosisSchema,
   uploadRequestSchema,
 } from '../src/schemas';
@@ -73,6 +75,33 @@ describe('média : photos + vidéo', () => {
       uploadRequestSchema.parse({ contentType: 'video/mp4', kind: 'video' }),
     ).not.toThrow();
     expect(() => uploadRequestSchema.parse({ contentType: 'video/avi', kind: 'video' })).toThrow();
+  });
+
+  it('createDiagnosisRequestSchema accepte audioIds (max 1) et défaut []', () => {
+    expect(createDiagnosisRequestSchema.parse({}).audioIds).toEqual([]);
+    expect(createDiagnosisRequestSchema.parse({ audioIds: [uuid] }).audioIds).toEqual([uuid]);
+    expect(() => createDiagnosisRequestSchema.parse({ audioIds: [uuid, uuid] })).toThrow();
+  });
+
+  it('MEDIA_CONTENT_TYPES contient les types audio et uploadRequestSchema les accepte', () => {
+    expect(MEDIA_CONTENT_TYPES).toContain('audio/mp4');
+    expect(MEDIA_CONTENT_TYPES).toContain('audio/mpeg');
+    expect(() =>
+      uploadRequestSchema.parse({ contentType: 'audio/mp4', kind: 'audio' }),
+    ).not.toThrow();
+  });
+
+  it('diagnosisResultSchema.input.audioIds défaut []', () => {
+    const base = {
+      id: '11111111-1111-1111-1111-111111111111',
+      createdAt: new Date().toISOString(),
+      category: null,
+      input: { description: 'x', brand: null, model: null, imageIds: [] },
+      diagnosis: valid,
+      safety: { riskLevel: 'LOW', recommendation: 'DIY', forcedStop: false, reasons: [] },
+      repairability: { score: 80, label: 'Easy DIY repair' },
+    };
+    expect(diagnosisResultSchema.parse(base).input.audioIds).toEqual([]);
   });
 });
 

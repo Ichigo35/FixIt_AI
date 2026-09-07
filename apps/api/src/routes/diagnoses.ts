@@ -32,7 +32,7 @@ import {
   type ImageMeta,
 } from '../db/repos';
 import { AIProviderError, getAIProvider } from '../providers';
-import type { DiagnoseImage, DiagnoseVideo } from '../providers/types';
+import type { DiagnoseAudio, DiagnoseImage, DiagnoseVideo } from '../providers/types';
 import { getStorage } from '../storage';
 import type { AppEnv } from '../types';
 
@@ -56,12 +56,14 @@ function diagnosisFingerprint(input: {
   category: string | null;
   imageIds: string[];
   videoIds: string[];
+  audioIds: string[];
 }): string {
   return JSON.stringify({
     d: input.description.trim(),
     c: input.category ?? null,
     i: [...input.imageIds].sort(),
     v: [...input.videoIds].sort(),
+    a: [...input.audioIds].sort(),
   });
 }
 
@@ -88,6 +90,10 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     return c.json({ error: 'invalid_request', issues: parsed.error.issues }, 400);
   }
   const req = parsed.data;
+  // Un clip audio seul est trop ambigu à interpréter : on exige quelques mots de contexte.
+  if (req.audioIds.length > 0 && !req.description.trim()) {
+    return c.json({ error: 'need_description_for_audio' }, 400);
+  }
   if (!req.description.trim() && req.imageIds.length === 0) {
     return c.json({ error: 'need_photo_or_description' }, 400);
   }
@@ -104,6 +110,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
     category: req.category ?? null,
     imageIds: req.imageIds,
     videoIds: req.videoIds,
+    audioIds: req.audioIds,
   });
   for (const prev of await recentDiagnoses(db, userId, DEDUP_WINDOW_MS)) {
     const prevFp = diagnosisFingerprint({
@@ -111,6 +118,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       category: prev.category,
       imageIds: prev.input.imageIds,
       videoIds: prev.input.videoIds ?? [],
+      audioIds: prev.input.audioIds ?? [],
     });
     if (prevFp === fingerprint) {
       const quota = await getQuota(db, userId);
@@ -129,8 +137,9 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
   // Récupération des médias depuis le stockage objet (+ métadonnées pour diagnosis_images).
   const images: DiagnoseImage[] = [];
   const videos: DiagnoseVideo[] = [];
+  const audios: DiagnoseAudio[] = [];
   const imageMeta: ImageMeta[] = [];
-  const mediaIds = [...req.imageIds, ...req.videoIds];
+  const mediaIds = [...req.imageIds, ...req.videoIds, ...req.audioIds];
   if (mediaIds.length > 0) {
     const storage = getStorage(c.env);
     if (!storage) return c.json({ error: 'storage_unavailable' }, 503);
@@ -144,14 +153,17 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       const data = obj.data;
       const contentType = obj.contentType || 'image/jpeg';
       const isVideo = contentType.startsWith('video/') || obj.metadata.kind === 'video';
+      const isAudio = !isVideo && (contentType.startsWith('audio/') || obj.metadata.kind === 'audio');
       if (isVideo) {
         videos.push({ contentType, data });
+      } else if (isAudio) {
+        audios.push({ contentType, data });
       } else {
         images.push({ contentType, data });
       }
       imageMeta.push({
         r2Key: key,
-        kind: isVideo ? 'video' : obj.metadata.kind ?? 'problem',
+        kind: isVideo ? 'video' : isAudio ? 'audio' : obj.metadata.kind ?? 'problem',
         contentType,
         bytes: data.byteLength,
       });
@@ -168,6 +180,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       model: req.model ?? null,
       images,
       videos,
+      audios,
     });
   } catch (err) {
     if (err instanceof AIProviderError) return aiErrorResponse(c, err);
@@ -190,6 +203,7 @@ diagnoses.post('/', rateLimit('DIAGNOSE_RL'), async (c) => {
       model: req.model ?? null,
       imageIds: req.imageIds,
       videoIds: req.videoIds,
+      audioIds: req.audioIds,
     },
     diagnosis: raw,
     safety,

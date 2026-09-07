@@ -156,6 +156,7 @@ function rowToResult(
   row: typeof diagnoses.$inferSelect,
   imageIds: string[],
   videoIds: string[] = [],
+  audioIds: string[] = [],
 ): StoredDiagnosis {
   return {
     id: row.id,
@@ -167,6 +168,7 @@ function rowToResult(
       model: row.model,
       imageIds,
       videoIds,
+      audioIds,
     },
     diagnosis: row.rawDiagnosis,
     safety: row.safety,
@@ -194,9 +196,12 @@ export async function getDiagnosis(
   // `imageIds` / `videoIds` = l'id d'upload (suffixe de la clé `uploads/{id}`),
   // directement utilisable par `GET /uploads/:id`. (Pas l'id de ligne `diagnosis_images`.)
   const uploadId = (r2Key: string) => r2Key.split('/').pop() ?? r2Key;
-  const imageIds = media.filter((m) => m.kind !== 'video').map((m) => uploadId(m.r2Key));
+  const imageIds = media
+    .filter((m) => m.kind !== 'video' && m.kind !== 'audio')
+    .map((m) => uploadId(m.r2Key));
   const videoIds = media.filter((m) => m.kind === 'video').map((m) => uploadId(m.r2Key));
-  return rowToResult(row, imageIds, videoIds);
+  const audioIds = media.filter((m) => m.kind === 'audio').map((m) => uploadId(m.r2Key));
+  return rowToResult(row, imageIds, videoIds, audioIds);
 }
 
 /**
@@ -229,8 +234,9 @@ export async function recentDiagnoses(
     const mine = media.filter((m) => m.diagnosisId === row.id);
     return rowToResult(
       row,
-      mine.filter((m) => m.kind !== 'video').map((m) => uploadId(m.r2Key)),
+      mine.filter((m) => m.kind !== 'video' && m.kind !== 'audio').map((m) => uploadId(m.r2Key)),
       mine.filter((m) => m.kind === 'video').map((m) => uploadId(m.r2Key)),
+      mine.filter((m) => m.kind === 'audio').map((m) => uploadId(m.r2Key)),
     );
   });
 }

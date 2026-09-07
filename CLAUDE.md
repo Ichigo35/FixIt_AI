@@ -139,11 +139,13 @@ NB : `git checkout apps/mobile/package.json` après `prebuild` ne fait que resta
   → **R8** : dex 56 Mo → ~23 Mo (uncompressed). Garde-fous dans `proguard-rules.pro` (expo.modules.**,
   hermes, react.bridge, ReactProp/ReactMethod, -dontwarn okhttp/okio/conscrypt). **À valider sur device**
   (si un module natif casse → ajouter un `-keep`).
-- `configurations.all { exclude group: 'com.google.mlkit' … 'play-services-code-scanner' … 'camera-mlkit-vision' }`
-  dans `app/build.gradle` → retire le scanner de code-barres ML Kit (`libbarhopper_v3.so` 4,9 Mo + modèles
-  tflite). ⚠️ `expo.camera.barcode-scanner-enabled=false` **seul ne suffit pas** : `:app` consomme l'AAR
-  publiée `host.exp.exponent:expo.modules.camera` dont le POM fige le dep runtime → il faut l'`exclude`
-  au niveau `:app`. Sûr tant qu'on n'active jamais `onBarcodeScanned`/`barcodeScannerSettings`.
+- **ML Kit code-barres retiré au packaging** (jamais utilisé) : `android.packagingOptions.jniLibs.excludes
+  += '**/libbarhopper_v3.so'` (4,9 Mo) + `resources.excludes += 'assets/mlkit_barcode_models/**'` (0,9 Mo)
+  dans `app/build.gradle`. ⚠️ **NE PAS** exclure la dépendance Maven (`configurations.all { exclude
+  'com.google.mlkit' }`) ni poser `expo.camera.barcode-scanner-enabled=false` : `CameraViewModule` référence
+  les classes ML Kit → **R8 échoue** (`Missing class`, non contournable avec `-keep expo.modules.**`).
+  On garde donc les classes Java (R8 en élague l'essentiel), on retire juste le natif au packaging.
+  Sûr tant qu'on n'active jamais `onBarcodeScanned`/`barcodeScannerSettings`.
 - `expo.gif.enabled=false` → pas de décodeur GIF Fresco (on n'affiche aucun GIF).
 - `reactNativeArchitectures=arm64-v8a` (déjà en place).
 Reste ~0,9 Mo `libavif_android.so` + ~1 Mo font Material Symbols (`expo-symbols`, jamais utilisé) —

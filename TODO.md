@@ -147,7 +147,8 @@ Diagnostic à partir d'un **court clip audio** (~30 s) + une **description oblig
 - ✅ **Helper pur** `src/features/capture/audioMeta.ts` (`formatClock`, `isUsableClip`) + test.
 - ✅ **177 tests** (72 shared + 58 api + 47 mobile ; +2 api « live » opt-in), `pnpm -r typecheck` + `pnpm lint` verts.
 - ✅ **`expo prebuild` + APK release** (2026-09-07, build 3 min 22 s, `RECORD_AUDIO` dans le manifeste, `allowBackup=false` + `dataExtractionRules` préservés). `apps/mobile/android/app/build/outputs/apk/release/app-release.apk` (~54,7 Mo, arm64, signé clé debug).
-- ⏳ **Reste** : **vérif sur device** (OPPO CPH2799 non branché) : enregistrer un bruit → diagnostic → relecture dans « My Repairs » + `wrangler tail --format json` (upload `audio/*`, part inline envoyée) ; **déployer le Worker** (`pnpm --filter @fixit/api run deploy`) ; test « live » Gemini audio opt-in (`GEMINI_LIVE_AUDIO`).
+- ✅ **Worker déployé** (2026-09-07, version `4aeefdb2`, `/health` OK — audio rétrocompatible).
+- ⏳ **Reste** : **vérif sur device** (OPPO CPH2799 non branché) : enregistrer un bruit → diagnostic → relecture dans « My Repairs » + `wrangler tail --format json` (upload `audio/*`, part inline envoyée) ; test « live » Gemini audio opt-in (`GEMINI_LIVE_AUDIO`).
 
 ## PHASE 10 — POLISH ✅ (1re passe)
 

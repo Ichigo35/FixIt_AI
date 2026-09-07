@@ -125,14 +125,29 @@ export ANDROID_HOME=~/Library/Android/sdk \
   JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
   EXPO_PUBLIC_APP_ENV=production
 ./gradlew :app:assembleRelease -x lint -PreactNativeArchitectures=arm64-v8a --console=plain
-# → app/build/outputs/apk/release/app-release.apk  (~52 Mo arm64 seul)
+# → app/build/outputs/apk/release/app-release.apk  (~23 Mo arm64, R8 + .so compressés — voir plus bas)
 ```
 Temps de build **mesuré 2026-09-02** avec le script : **45 s** pour un rebuild où rien n'a changé (`compileReleaseKotlin` UP-TO-DATE, lintVital sauté, 25/337 tâches) — vs **~19 min** juste avant, même état, avec `daemon=false` + lintVital. Attendu : **~2-4 min** pour un vrai changement JS/assets (rebundle Metro + hermesc) ; **~10-15 min** pour `--clean`/nouveau module natif. Ne pas supprimer `~/.gradle`, le NDK, ni `apps/mobile/android/{.gradle,build,app/build}` entre deux builds (cf. [[build-cache-protection]]). L'APK (~52 Mo) dépasse la limite d'upload du chat (30 Mo) → `open -R` (le script le fait).
 
 **Boucle rapide pour itérer sur le JS** (pas de rebuild APK) : garder l'APK debug/release installé + `pnpm mobile` (Metro) — le JS se recharge à chaud. Le rebuild APK ne sert que pour livrer une version installable autonome.
 NB : `git checkout apps/mobile/package.json` après `prebuild` ne fait que restaurer les scripts `android`/`ios` ; les vraies deps (dont `expo-video`) sont déjà committées.
-APK léger (~arm64 + R8) : dans `android/gradle.properties` poser `reactNativeArchitectures=arm64-v8a`,
-`android.enableMinifyInReleaseBuilds=true`, `android.enableShrinkResourcesInReleaseBuilds=true`.
+**Taille de l'APK (2026-09-07 : 52 Mo → ~23 Mo).** `build-android-release.sh` réinjecte tout après
+`expo prebuild` (via `ensure_prop` + append `proguard-rules.pro` + sed `app/build.gradle`) :
+- `expo.useLegacyPackaging=true` → `.so` **compressés** dans l'APK (26 Mo → 9 Mo ; `extractNativeLibs=true`,
+  1er lancement à peine plus lent). **Le plus gros gain, zéro risque.**
+- `android.enableMinifyInReleaseBuilds=true` + `android.enableShrinkResourcesInReleaseBuilds=true`
+  → **R8** : dex 56 Mo → ~23 Mo (uncompressed). Garde-fous dans `proguard-rules.pro` (expo.modules.**,
+  hermes, react.bridge, ReactProp/ReactMethod, -dontwarn okhttp/okio/conscrypt). **À valider sur device**
+  (si un module natif casse → ajouter un `-keep`).
+- `configurations.all { exclude group: 'com.google.mlkit' … 'play-services-code-scanner' … 'camera-mlkit-vision' }`
+  dans `app/build.gradle` → retire le scanner de code-barres ML Kit (`libbarhopper_v3.so` 4,9 Mo + modèles
+  tflite). ⚠️ `expo.camera.barcode-scanner-enabled=false` **seul ne suffit pas** : `:app` consomme l'AAR
+  publiée `host.exp.exponent:expo.modules.camera` dont le POM fige le dep runtime → il faut l'`exclude`
+  au niveau `:app`. Sûr tant qu'on n'active jamais `onBarcodeScanned`/`barcodeScannerSettings`.
+- `expo.gif.enabled=false` → pas de décodeur GIF Fresco (on n'affiche aucun GIF).
+- `reactNativeArchitectures=arm64-v8a` (déjà en place).
+Reste ~0,9 Mo `libavif_android.so` + ~1 Mo font Material Symbols (`expo-symbols`, jamais utilisé) —
+non retirés (marginal, exclusion moins propre).
 `EXPO_PUBLIC_APP_ENV=production` est **impératif** pour OAuth (redirect_uri `/auth/callback` doit être joignable depuis le navigateur système). `eas.json` a des profils prêts si EAS est installé un jour.
 Tester OAuth : impossible en Expo Go (schéma natif `fixitai://`) → dev-client ou APK.
 

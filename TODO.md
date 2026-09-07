@@ -175,7 +175,9 @@ Questions interactives · « réparer ou remplacer » · STOP par domaine · i18
 - ✅ **13c STOP spécifiques par domaine** : `safety/classifier.ts` — nouvelles `TextRule` FR+EN : `refrigerant` (fluide frigorigène / R-134a… → **CRITICAL forcedStop** : manipulation légalement encadrée), `airbag` (SRS / prétensionneur → **CRITICAL forcedStop**), `vehicle_lifted` (voiture sur cric/chandelles → HIGH), `working_at_height` (échelle / toit / gouttières → HIGH). Tokens de danger `airbag`/`refrigerant`/`working_at_height`/… → plancher de risque. **Règle d'or respectée** (ne peut que durcir).
 - ✅ **13d i18n** : namespace `diagnosis.*` (FR/EN, parité testée) → `DiagnosisResultView`, `StopView`, `RefineDiagnosis`, `OutcomeSection` migrés à `t()` ; `describe.tsx` migré (namespace `describe.*`) ; `lib/errors.ts` : `need_description_for_audio` ajouté (reste EN — module pur hors Expo, i18n complète = plus tard).
 - ✅ **199 tests** (89 shared + 63 api + 47 mobile), `typecheck` + `lint` verts.
-- ⏳ **Reste** : déployer le Worker (classifier + `replacementCost`) ; **vérif device** (questions cliquables → re-diagnostic affiné ; carte « réparer ou remplacer » ; « fluide frigorigène » → écran STOP) ; i18n de `lib/errors.ts` (module pur hors Expo).
+- ✅ **Worker déployé** (2026-09-07, version `daa89cb9`, `/health` OK).
+- ✅ **APK release PHASES 11+12+13** reconstruit (2026-09-07, `--rerun-tasks` forcé car `org.gradle.caching` masquait le re-bundle JS — piège documenté dans CLAUDE.md ; bundle vérifié : `Writing bundle output` + strings 11/12/13 présentes dans `index.android.bundle`). `app-release.apk` (~54,8 Mo, arm64, clé debug).
+- ⏳ **Reste** : **vérif device** (OPPO CPH2799 non branché) — audio bout-en-bout, code `P0300` → explication, photo de plaque → carte modèle, questions cliquables → re-diagnostic, carte « réparer ou remplacer », « fluide frigorigène » → STOP ; i18n de `lib/errors.ts` (module pur hors Expo).
 
 ## PHASE 10 — POLISH ✅ (1re passe)
 

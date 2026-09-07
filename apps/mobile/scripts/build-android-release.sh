@@ -41,8 +41,9 @@ ensure_prop "android.enablePngCrunchInReleaseBuilds" "android.enablePngCrunchInR
 ensure_prop "android.enableMinifyInReleaseBuilds"         "android.enableMinifyInReleaseBuilds=true"
 ensure_prop "android.enableShrinkResourcesInReleaseBuilds" "android.enableShrinkResourcesInReleaseBuilds=true"
 ensure_prop "expo.useLegacyPackaging"       "expo.useLegacyPackaging=true"
-ensure_prop "expo.camera.barcode-scanner-enabled" "expo.camera.barcode-scanner-enabled=false"
 ensure_prop "expo.gif.enabled"              "expo.gif.enabled=false"
+# NB : PAS `expo.camera.barcode-scanner-enabled=false` — on garde les classes ML Kit
+# (R8 échoue sinon) et on retire seulement le .so au packaging (voir plus bas).
 
 # Garde-fous R8 (proguard-rules.pro régénéré par `expo prebuild` → on réapplique).
 PROGUARD="$ANDROID_DIR/app/proguard-rules.pro"
@@ -69,11 +70,18 @@ EOF
   echo "✓ garde-fous R8 ajoutés à proguard-rules.pro"
 fi
 
-# Retire ML Kit (scanner de code-barres, ~5 Mo natif) — jamais utilisé. Régénéré par prebuild.
+# Retire le natif ML Kit (scanner de code-barres, ~5 Mo) du packaging — jamais
+# utilisé, mais on GARDE les classes Java (sinon R8 échoue : CameraViewModule les
+# référence). Régénéré par `expo prebuild`. NB : ne PAS exclure la dépendance Maven.
 APP_GRADLE="$ANDROID_DIR/app/build.gradle"
-if [[ -f "$APP_GRADLE" ]] && ! grep -q "on retire ML Kit" "$APP_GRADLE"; then
-  /usr/bin/sed -i '' $'s|^dependencies {|configurations.all {\\\n    exclude group: \'com.google.mlkit\'\\\n    exclude group: \'com.google.android.gms\', module: \'play-services-mlkit-barcode-scanning\'\\\n    exclude group: \'com.google.android.gms\', module: \'play-services-code-scanner\'\\\n    exclude group: \'androidx.camera\', module: \'camera-mlkit-vision\'\\\n}  // on retire ML Kit\\\n\\\ndependencies {|' "$APP_GRADLE"
-  echo "✓ exclusion ML Kit ajoutée à app/build.gradle"
+if [[ -f "$APP_GRADLE" ]] && ! grep -q "libbarhopper_v3.so" "$APP_GRADLE"; then
+  cat >> "$APP_GRADLE" <<'EOF'
+
+// --- FixIt AI : natif ML Kit code-barres retiré du packaging (jamais utilisé). ---
+android.packagingOptions.jniLibs.excludes += '**/libbarhopper_v3.so'
+android.packagingOptions.resources.excludes += 'assets/mlkit_barcode_models/**'
+EOF
+  echo "✓ exclusion natif ML Kit ajoutée à app/build.gradle"
 fi
 
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"

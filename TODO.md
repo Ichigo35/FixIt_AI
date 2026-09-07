@@ -146,7 +146,8 @@ Diagnostic à partir d'un **court clip audio** (~30 s) + une **description oblig
 - ✅ **Mobile** : dép. native **`expo-audio ~57.0.4`** + plugin `app.config.ts` ; `AudioCapture.tsx` (`useAudioRecorder`/`useAudioRecorderState`, perms, cap 30 s, bouton record/stop) ; `uploads.ts` `uploadAudio` + `audioSource` (retag `Blob.slice()`) ; `CaptureFlow` mode `audio` (**description ≥ 8 car. obligatoire**) ; `app/capture.tsx` + `app/diagnosis/new.tsx` (`audioIds`, `analyzingAudio`) ; `DiagnosisMedia` tuile 🎙️ + `AudioPlayerBox` (`useAudioPlayer`) ; `RefineDiagnosis` propage `audioIds` ; action d'accueil « Enregistrer un son » ; i18n FR/EN (`capture.*`, `media.audio/playAudio`, `home.actionAudio*`).
 - ✅ **Helper pur** `src/features/capture/audioMeta.ts` (`formatClock`, `isUsableClip`) + test.
 - ✅ **177 tests** (72 shared + 58 api + 47 mobile ; +2 api « live » opt-in), `pnpm -r typecheck` + `pnpm lint` verts.
-- ⏳ **Reste** : `expo prebuild` + **rebuild APK** (nouveau module natif) ; **vérif sur device** (OPPO CPH2799) : enregistrer un bruit → diagnostic → relecture dans « My Repairs » + `wrangler tail --format json` (upload `audio/*`, part inline envoyée) ; déployer le Worker ; test « live » Gemini audio opt-in (`GEMINI_LIVE_AUDIO`).
+- ✅ **`expo prebuild` + APK release** (2026-09-07, build 3 min 22 s, `RECORD_AUDIO` dans le manifeste, `allowBackup=false` + `dataExtractionRules` préservés). `apps/mobile/android/app/build/outputs/apk/release/app-release.apk` (~54,7 Mo, arm64, signé clé debug).
+- ⏳ **Reste** : **vérif sur device** (OPPO CPH2799 non branché) : enregistrer un bruit → diagnostic → relecture dans « My Repairs » + `wrangler tail --format json` (upload `audio/*`, part inline envoyée) ; **déployer le Worker** (`pnpm --filter @fixit/api run deploy`) ; test « live » Gemini audio opt-in (`GEMINI_LIVE_AUDIO`).
 
 ## PHASE 10 — POLISH ✅ (1re passe)
 

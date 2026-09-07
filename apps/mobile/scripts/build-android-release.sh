@@ -62,6 +62,9 @@ if [[ -f "$PROGUARD" ]] && ! grep -q "FixIt AI : garde-fous R8" "$PROGUARD"; the
 -dontwarn okio.**
 -dontwarn org.conscrypt.**
 -dontwarn javax.annotation.**
+-dontwarn com.google.mlkit.**
+-dontwarn com.google.android.gms.vision.**
+-dontwarn androidx.camera.mlkit.**
 EOF
   echo "✓ garde-fous R8 ajoutés à proguard-rules.pro"
 fi
